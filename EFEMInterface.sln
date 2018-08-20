@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2042
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFEMInterface", "EFEMInterface\EFEMInterface.csproj", "{FA9F0060-9751-4CF0-993A-357FD796143E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FA9F0060-9751-4CF0-993A-357FD796143E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA9F0060-9751-4CF0-993A-357FD796143E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA9F0060-9751-4CF0-993A-357FD796143E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA9F0060-9751-4CF0-993A-357FD796143E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C86F33BC-7C14-4280-B0FB-BD21B2621A30}
+	EndGlobalSection
+EndGlobal
