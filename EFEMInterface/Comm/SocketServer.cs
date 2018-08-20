@@ -44,7 +44,7 @@ namespace EFEMInterface.Comm
             // running the listener is "host.contoso.com".  
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             IPAddress ipAddress = ipHostInfo.AddressList[0];
-            IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 11000);
+            IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 13000);
 
             // Create a TCP/IP socket.  
             Socket listener = new Socket(ipAddress.AddressFamily,
@@ -86,11 +86,11 @@ namespace EFEMInterface.Comm
         {
             // Signal the main thread to continue.  
             allDone.Set();
-            _EventReport.On_Connection_Connected();
+            
             // Get the socket that handles the client request.  
             Socket listener = (Socket)ar.AsyncState;
             Socket handler = listener.EndAccept(ar);
-
+            _EventReport.On_Connection_Connected(handler);
             // Create the state object.  
             StateObject state = new StateObject();
             state.workSocket = handler;

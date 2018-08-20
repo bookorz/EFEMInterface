@@ -32,11 +32,8 @@ namespace EFEMInterface.MessageInterface
         {
             public string OrgMsg = "";
             public string Command;
-            public string NodeAdr = "";
-            public string Seq = "";
             public List<string> Parameter = new List<string>();
             public string CommandType = "";
-            public string TransactionType = "";
         }
 
         public class CommandType
@@ -58,15 +55,7 @@ namespace EFEMInterface.MessageInterface
             public const string Information = "Information";
             public const string ReInformation = "ReInformation";
             public const string Abnormal = "Abnormal";
-        }
-
-        private void CommandHandler(RorzeCommand cmd)
-        {
-            
-                string ReturnMessage = "";
-                
-            
-        }
+        }     
 
         private RorzeCommand CmdParser(string Msg)
         {
@@ -136,14 +125,14 @@ namespace EFEMInterface.MessageInterface
             _EventReport.On_Connection_Connecting();
         }
 
-        public void On_Connection_Connected()
+        public void On_Connection_Connected(Socket handler)
         {
             RorzeInterface.RorzeCommand CommunityActive = new RorzeInterface.RorzeCommand();
-            CommunityActive.CommandType = "COM";
+            CommunityActive.CommandType = CommandType.INF;
             CommunityActive.Command = "READY";
             CommunityActive.Parameter.Add("COMM*");
             string CommandMsg = CmdAssembler(CommunityActive, CommandType.INF);
-
+            Comm.Send(handler, CommandMsg);
             _EventReport.On_Connection_Connected();
         }
 
