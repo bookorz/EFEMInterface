@@ -10,10 +10,15 @@ namespace EFEMInterface.MessageInterface
     {
         public class ErrorType
         {
-            public const string COMMAND = "COMMAND";
+            //public const string COMMAND = "COMMAND";
         }
 
-        public class ErrorDetail
+        public class CancelFactor
+        {
+            public const string BUSY = "BUSY";
+        }
+
+        public class CancelPlace
         {
             public const string DUPLICATE = "DUPLICATE";
             

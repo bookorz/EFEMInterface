@@ -22,6 +22,11 @@ namespace EFEMInterface.Comm
         public byte[] buffer = new byte[BufferSize];
         // Received data string.  
         public StringBuilder sb = new StringBuilder();
+
+        //public void ClearBuffer()
+        //{
+        //    buffer = new byte[BufferSize];
+        //}
     }
 
     public class SocketServer
@@ -128,7 +133,11 @@ namespace EFEMInterface.Comm
                         // client. Display it on the console.  
                         //Console.WriteLine("Read {0} bytes from socket. \n Data : {1}",
                         //    content.Length, content);
+                        state.sb.Clear();
                         _EventReport.On_Connection_Message(handler, content);
+                        //state.ClearBuffer();
+                        handler.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0,
+                       new AsyncCallback(ReadCallback), state);
                     }
                     else
                     {

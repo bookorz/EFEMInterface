@@ -25,9 +25,9 @@ namespace EFEMInterface.MessageInterface
             Comm = new SocketServer(this);
         }
 
-        
 
-       
+
+
         public class RorzeCommand
         {
             public string OrgMsg = "";
@@ -55,7 +55,7 @@ namespace EFEMInterface.MessageInterface
             public const string Information = "Information";
             public const string ReInformation = "ReInformation";
             public const string Abnormal = "Abnormal";
-        }     
+        }
 
         private RorzeCommand CmdParser(string Msg)
         {
@@ -63,14 +63,14 @@ namespace EFEMInterface.MessageInterface
 
             each.OrgMsg = Msg;
 
-            string[] content = Msg.Replace(";","").Replace("\r", "").Split(':', '/');
+            string[] content = Msg.Replace(";", "").Replace("\r", "").Split(':', '/');
 
             for (int i = 0; i < content.Length; i++)
             {
                 switch (i)
                 {
                     case 0:
-                        
+
                         each.CommandType = content[i];
                         break;
                     case 1:
@@ -88,13 +88,13 @@ namespace EFEMInterface.MessageInterface
             return each;
         }
 
-        public string CmdAssembler(RorzeCommand cmd,string CommandType)
+        private string CmdAssembler(RorzeCommand cmd, string CommandType)
         {
             string result = "";
 
             result = CommandType + ":" + cmd.Command;
 
-            foreach(string param in cmd.Parameter)
+            foreach (string param in cmd.Parameter)
             {
                 result += "/" + param;
             }
@@ -104,19 +104,50 @@ namespace EFEMInterface.MessageInterface
             return result;
         }
 
-        public string ErrorAssembler(RorzeCommand cmd,string Param1,string Param2)
+        private string ErrorAssembler(RorzeCommand cmd, string Param1, string Param2)
         {
             string result = "";
 
-            result =  "ABS:" + cmd.Command;
+            result = "ABS:" + cmd.Command;
 
             foreach (string param in cmd.Parameter)
             {
                 result += "/" + param;
             }
+            result += "|ERROR";
 
-            result += "|ERROR/"+ Param1+"/"+ Param2+ ";\r";
+            if (!Param1.Equals(""))
+            {
+                result += "/" + Param1;
+            }
+            if (!Param2.Equals(""))
+            {
+                result += "/" + Param2;
+            }
+            result += ";\r";
 
+            return result;
+        }
+
+        private string CancelAssembler(RorzeCommand cmd, string Factor, string Place)
+        {
+            string result = "";
+
+            result = "CAN:" + cmd.Command;
+
+            foreach (string param in cmd.Parameter)
+            {
+                result += "/" + param;
+            }
+            if (!Factor.Equals(""))
+            {
+                result += "|" + Factor;
+            }
+            if (!Factor.Equals(""))
+            {
+                result += "/" + Place;
+            }
+            result += ";\r";
             return result;
         }
 
@@ -127,7 +158,7 @@ namespace EFEMInterface.MessageInterface
 
         public void On_Connection_Connected(Socket handler)
         {
-            RorzeInterface.RorzeCommand CommunityActive = new RorzeInterface.RorzeCommand();
+            RorzeCommand CommunityActive = new RorzeCommand();
             CommunityActive.CommandType = CommandType.INF;
             CommunityActive.Command = "READY";
             CommunityActive.Parameter.Add("COMM*");
@@ -153,23 +184,26 @@ namespace EFEMInterface.MessageInterface
                 _EventReport.On_CommandMessage("Recv:" + content.ToString());
                 RorzeCommand cmd = CmdParser(content);
                 string key = cmd.Command;
-                //回報收到訊息
-                string CommandMsg = CmdAssembler(cmd, CommandType.ACK);
-                Comm.Send(handler, CommandMsg);
-                _EventReport.On_CommandMessage("Send:" + CommandMsg);
+               
 
                 switch (cmd.CommandType)
                 {
                     case CommandType.GET:
                     case CommandType.SET:
-
+                        //回報收到訊息
+                        string CommandMsg = CmdAssembler(cmd, CommandType.ACK);
+                        Comm.Send(handler, CommandMsg);
+                        _EventReport.On_CommandMessage("Send:" + CommandMsg);
                         break;
                     case CommandType.MOV:
-                    
+                        //回報收到訊息
+                        CommandMsg = CmdAssembler(cmd, CommandType.ACK);
+                        Comm.Send(handler, CommandMsg);
+                        _EventReport.On_CommandMessage("Send:" + CommandMsg);
                         if (OnHandlingCmds.ContainsKey(key))
                         {//已有相同指令正在執行中，回覆錯誤訊息給上位系統
 
-                            string ErrorMessage = ErrorAssembler(cmd, ErrorCategory.ErrorType.COMMAND, ErrorCategory.ErrorDetail.DUPLICATE);
+                            string ErrorMessage = CancelAssembler(cmd, ErrorCategory.CancelFactor.BUSY, ErrorCategory.CancelPlace.DUPLICATE);
                             Comm.Send(handler, ErrorMessage);
                             _EventReport.On_CommandMessage("Send:" + ErrorMessage);
                         }
@@ -179,7 +213,7 @@ namespace EFEMInterface.MessageInterface
                             WaitForHandle.Cmd = cmd;
                             WaitForHandle.Handler = handler;
                             OnHandlingCmds.Add(key, WaitForHandle);
-                            
+
                             //處理邏輯開始
 
 
@@ -203,8 +237,9 @@ namespace EFEMInterface.MessageInterface
 
 
 
-                
-            }catch(Exception e)
+
+            }
+            catch (Exception e)
             {
                 _EventReport.On_CommandMessage(e.StackTrace);
             }
@@ -213,7 +248,7 @@ namespace EFEMInterface.MessageInterface
         public void On_Handling_TimeOut(OnHandling TimeOutCmd)
         {
             string key = TimeOutCmd.Cmd.Command;
-            if (TimeOutCmd.INF_RetryCount <= 3)
+            if (TimeOutCmd.INF_RetryCount < 3)
             {
                 TimeOutCmd.INF_RetryCount++;
                 string CommandMsg = CmdAssembler(TimeOutCmd.Cmd, CommandType.INF);
@@ -224,9 +259,10 @@ namespace EFEMInterface.MessageInterface
             {
                 TimeOutCmd.SetTimeOutMonitor(false);//設定Timeout監控停止
                 OnHandlingCmds.Remove(key);//從待處理名單移除
+                _EventReport.On_CommandMessage("Retry Timeout:" + CmdAssembler(TimeOutCmd.Cmd, CommandType.INF));
             }
         }
 
-        
+
     }
 }
