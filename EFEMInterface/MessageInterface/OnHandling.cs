@@ -14,6 +14,7 @@ namespace EFEMInterface.MessageInterface
         public RorzeCommand Cmd { get; set; }
         public Socket Handler { get; set; }
         public int INF_RetryCount { get; set; }
+        public DateTime ReceiveTime { get; set; }
         //逾時
         private System.Timers.Timer timeOutTimer = new System.Timers.Timer();
         IHandlingTimeOutReport _TimeOutReport;
@@ -25,6 +26,7 @@ namespace EFEMInterface.MessageInterface
             timeOutTimer.Elapsed += new System.Timers.ElapsedEventHandler(TimeOutMonitor);
             INF_RetryCount = 0;
             ID = Guid.NewGuid().ToString();
+            ReceiveTime = DateTime.Now;
         }
 
         public void SetTimeOutMonitor(bool Enabled)

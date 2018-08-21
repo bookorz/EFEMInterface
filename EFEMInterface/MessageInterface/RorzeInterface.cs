@@ -161,9 +161,17 @@ namespace EFEMInterface.MessageInterface
             RorzeCommand CommunityActive = new RorzeCommand();
             CommunityActive.CommandType = CommandType.INF;
             CommunityActive.Command = "READY";
-            CommunityActive.Parameter.Add("COMM*");
+            CommunityActive.Parameter.Add("COMM");
+
+            OnHandling WaitForHandle = new OnHandling(this);
+            WaitForHandle.Cmd = CommunityActive;
+            WaitForHandle.Handler = handler;
+            OnHandlingCmds.Add(WaitForHandle.ID, WaitForHandle);
+            WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+
             string CommandMsg = CmdAssembler(CommunityActive, CommandType.INF);
             Comm.Send(handler, CommandMsg);
+            _EventReport.On_CommandMessage("Send:" + CommandMsg);
             _EventReport.On_Connection_Connected();
         }
 
@@ -183,55 +191,49 @@ namespace EFEMInterface.MessageInterface
             {
                 _EventReport.On_CommandMessage("Recv:" + content.ToString());
                 RorzeCommand cmd = CmdParser(content);
-                string key = cmd.Command;
-               
+
+                
 
                 switch (cmd.CommandType)
                 {
                     case CommandType.GET:
                     case CommandType.SET:
+                    case CommandType.MOV:
+                        OnHandling WaitForHandle = new OnHandling(this);
+                        WaitForHandle.Cmd = cmd;
+                        WaitForHandle.Handler = handler;
+                        OnHandlingCmds.Add(WaitForHandle.ID, WaitForHandle);
                         //回報收到訊息
                         string CommandMsg = CmdAssembler(cmd, CommandType.ACK);
                         Comm.Send(handler, CommandMsg);
                         _EventReport.On_CommandMessage("Send:" + CommandMsg);
-                        break;
-                    case CommandType.MOV:
-                        //回報收到訊息
-                        CommandMsg = CmdAssembler(cmd, CommandType.ACK);
+
+                        //處理邏輯開始
+
+
+                        //處理邏輯結束
+                        CommandMsg = CmdAssembler(cmd, CommandType.INF);//傳送動作完成給上位系統
                         Comm.Send(handler, CommandMsg);
                         _EventReport.On_CommandMessage("Send:" + CommandMsg);
-                        if (OnHandlingCmds.ContainsKey(key))
-                        {//已有相同指令正在執行中，回覆錯誤訊息給上位系統
+                        WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
 
-                            string ErrorMessage = CancelAssembler(cmd, ErrorCategory.CancelFactor.BUSY, ErrorCategory.CancelPlace.DUPLICATE);
-                            Comm.Send(handler, ErrorMessage);
-                            _EventReport.On_CommandMessage("Send:" + ErrorMessage);
-                        }
-                        else
-                        {
-                            OnHandling WaitForHandle = new OnHandling(this);
-                            WaitForHandle.Cmd = cmd;
-                            WaitForHandle.Handler = handler;
-                            OnHandlingCmds.Add(key, WaitForHandle);
-
-                            //處理邏輯開始
-
-
-                            //處理邏輯結束
-                            CommandMsg = CmdAssembler(cmd, CommandType.INF);//傳送動作完成給上位系統
-                            Comm.Send(handler, CommandMsg);
-                            _EventReport.On_CommandMessage("Send:" + CommandMsg);
-                            WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
-                        }
                         break;
                     case CommandType.ACK://收到上位系統回覆
-                        if (OnHandlingCmds.ContainsKey(key))//確認有這筆
+                        List<OnHandling> tmp = OnHandlingCmds.Values.ToList();
+                        tmp.Sort((x, y) => { return x.ReceiveTime.CompareTo(y.ReceiveTime); });
+
+                        var findHandling = from Handling in tmp
+                                       where Handling.Cmd.Command.Equals(cmd.Command)
+                                       select Handling;
+
+                        if (findHandling.Count() != 0)
                         {
-                            OnHandling WaitForHandle;
-                            OnHandlingCmds.TryGetValue(key, out WaitForHandle);
+                            WaitForHandle = findHandling.First();
                             WaitForHandle.SetTimeOutMonitor(false);//設定Timeout監控停止
-                            OnHandlingCmds.Remove(key);//從待處理名單移除
+                            OnHandlingCmds.Remove(WaitForHandle.ID);//從待處理名單移除
                         }
+                            
+                        
                         break;
                 }
 
@@ -243,6 +245,27 @@ namespace EFEMInterface.MessageInterface
             {
                 _EventReport.On_CommandMessage(e.StackTrace);
             }
+        }
+      
+
+
+        private string InformationAssembler(RorzeCommand cmd,string data)
+        {
+            string result = "";
+            switch (cmd.Command)
+            {
+                case "MAPDT":
+
+                    break;
+                case "TRANSREQ":
+
+                    break;
+                case "SIGSTAT":
+
+                    break;
+            }
+
+            return result;
         }
 
         public void On_Handling_TimeOut(OnHandling TimeOutCmd)
