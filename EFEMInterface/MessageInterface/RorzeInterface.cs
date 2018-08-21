@@ -63,7 +63,7 @@ namespace EFEMInterface.MessageInterface
 
             each.OrgMsg = Msg;
 
-            string[] content = Msg.Replace(";","").Split(':', '/');
+            string[] content = Msg.Replace(";","").Replace("\r", "").Split(':', '/');
 
             for (int i = 0; i < content.Length; i++)
             {
@@ -99,7 +99,7 @@ namespace EFEMInterface.MessageInterface
                 result += "/" + param;
             }
 
-            result += ";";
+            result += ";\r";
 
             return result;
         }
@@ -115,7 +115,7 @@ namespace EFEMInterface.MessageInterface
                 result += "/" + param;
             }
 
-            result += "|ERROR/"+ Param1+"/"+ Param2+";";
+            result += "|ERROR/"+ Param1+"/"+ Param2+ ";\r";
 
             return result;
         }
@@ -150,13 +150,22 @@ namespace EFEMInterface.MessageInterface
         {
             try
             {
+                _EventReport.On_CommandMessage("Recv:" + content.ToString());
                 RorzeCommand cmd = CmdParser(content);
                 string key = cmd.Command;
+                //回報收到訊息
+                string CommandMsg = CmdAssembler(cmd, CommandType.ACK);
+                Comm.Send(handler, CommandMsg);
+                _EventReport.On_CommandMessage("Send:" + CommandMsg);
+
                 switch (cmd.CommandType)
                 {
-                    case CommandType.MOV:
                     case CommandType.GET:
                     case CommandType.SET:
+
+                        break;
+                    case CommandType.MOV:
+                    
                         if (OnHandlingCmds.ContainsKey(key))
                         {//已有相同指令正在執行中，回覆錯誤訊息給上位系統
 
@@ -170,10 +179,7 @@ namespace EFEMInterface.MessageInterface
                             WaitForHandle.Cmd = cmd;
                             WaitForHandle.Handler = handler;
                             OnHandlingCmds.Add(key, WaitForHandle);
-                            //回報收到訊息
-                            string CommandMsg = CmdAssembler(cmd, CommandType.ACK);
-                            Comm.Send(handler, CommandMsg);
-                            _EventReport.On_CommandMessage("Send:" + CommandMsg);
+                            
                             //處理邏輯開始
 
 
@@ -197,7 +203,7 @@ namespace EFEMInterface.MessageInterface
 
 
 
-                _EventReport.On_CommandMessage("Recv:" + content.ToString());
+                
             }catch(Exception e)
             {
                 _EventReport.On_CommandMessage(e.StackTrace);

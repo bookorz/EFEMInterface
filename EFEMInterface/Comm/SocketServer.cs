@@ -34,14 +34,14 @@ namespace EFEMInterface.Comm
         {
             _EventReport = EventReport;
             ThreadPool.QueueUserWorkItem(new WaitCallback(StartListening));
-            
+
         }
 
         public void StartListening(object msg)
         {
             // Establish the local endpoint for the socket.  
             // The DNS name of the computer  
-            // running the listener is "host.contoso.com".  
+
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             IPAddress ipAddress = ipHostInfo.AddressList[0];
             IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 13000);
@@ -62,7 +62,7 @@ namespace EFEMInterface.Comm
                     allDone.Reset();
 
                     // Start an asynchronous socket to listen for connections.  
-                    Console.WriteLine("Waiting for a connection...");
+                    //Console.WriteLine("Waiting for a connection...");
                     listener.BeginAccept(
                         new AsyncCallback(AcceptCallback),
                         listener);
@@ -74,11 +74,11 @@ namespace EFEMInterface.Comm
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                //Console.WriteLine(e.ToString());
             }
 
-            Console.WriteLine("\nPress ENTER to continue...");
-            Console.Read();
+            //Console.WriteLine("\nPress ENTER to continue...");
+            //Console.Read();
 
         }
 
@@ -86,7 +86,7 @@ namespace EFEMInterface.Comm
         {
             // Signal the main thread to continue.  
             allDone.Set();
-            
+
             // Get the socket that handles the client request.  
             Socket listener = (Socket)ar.AsyncState;
             Socket handler = listener.EndAccept(ar);
@@ -122,13 +122,13 @@ namespace EFEMInterface.Comm
                     // Check for end-of-file tag. If it is not there, read   
                     // more data.  
                     content = state.sb.ToString();
-                    if (content.IndexOf(";") > -1)
+                    if (content.IndexOf("\r") > -1)
                     {
                         // All the data has been read from the   
                         // client. Display it on the console.  
-                        Console.WriteLine("Read {0} bytes from socket. \n Data : {1}",
-                            content.Length, content);
-                        _EventReport.On_Connection_Message(handler,content);
+                        //Console.WriteLine("Read {0} bytes from socket. \n Data : {1}",
+                        //    content.Length, content);
+                        _EventReport.On_Connection_Message(handler, content);
                     }
                     else
                     {
@@ -138,7 +138,7 @@ namespace EFEMInterface.Comm
                     }
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 _EventReport.On_Connection_Disconnected();
             }
@@ -170,7 +170,7 @@ namespace EFEMInterface.Comm
 
                 // Complete sending the data to the remote device.  
                 int bytesSent = handler.EndSend(ar);
-                Console.WriteLine("Sent {0} bytes to client.", bytesSent);
+                //Console.WriteLine("Sent {0} bytes to client.", bytesSent);
 
                 //handler.Shutdown(SocketShutdown.Both);
                 //handler.Close();

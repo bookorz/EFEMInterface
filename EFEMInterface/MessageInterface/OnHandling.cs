@@ -10,6 +10,7 @@ namespace EFEMInterface.MessageInterface
 {
     public class OnHandling
     {
+        public string ID { get; set; }
         public RorzeCommand Cmd { get; set; }
         public Socket Handler { get; set; }
         public int INF_RetryCount { get; set; }
@@ -23,6 +24,7 @@ namespace EFEMInterface.MessageInterface
             timeOutTimer.Interval = TimeOut;
             timeOutTimer.Elapsed += new System.Timers.ElapsedEventHandler(TimeOutMonitor);
             INF_RetryCount = 0;
+            ID = Guid.NewGuid().ToString();
         }
 
         public void SetTimeOutMonitor(bool Enabled)
