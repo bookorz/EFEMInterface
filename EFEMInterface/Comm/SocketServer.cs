@@ -42,8 +42,8 @@ namespace EFEMInterface.Comm
             // Establish the local endpoint for the socket.  
             // The DNS name of the computer  
 
-            IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
-            IPAddress ipAddress = ipHostInfo.AddressList[0];
+            //IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
+            IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
             IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 13000);
 
             // Create a TCP/IP socket.  
