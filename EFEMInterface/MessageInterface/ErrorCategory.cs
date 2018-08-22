@@ -16,6 +16,7 @@ namespace EFEMInterface.MessageInterface
         public class CancelFactor
         {
             public const string BUSY = "BUSY";
+            public const string NOLINK = "NOLINK";
         }
 
         public class CancelPlace

@@ -6,16 +6,19 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using TransferControl.Engine;
+using TransferControl.Management;
 
 namespace EFEMInterface.MessageInterface
 {
-    public class RorzeInterface : ICommMessage, IHandlingTimeOutReport
+    public class RorzeInterface : ICommMessage, IHandlingTimeOutReport, IHostInterfaceReport, IUserInterfaceReport
     {
         ILog logger = LogManager.GetLogger(typeof(RorzeInterface));
 
         private Dictionary<string, OnHandling> OnHandlingCmds = new Dictionary<string, OnHandling>();
 
         IEFEMControl _EventReport;
+        RouteControl RTCtrl;
 
         SocketServer Comm;
 
@@ -23,6 +26,7 @@ namespace EFEMInterface.MessageInterface
         {
             _EventReport = EventReport;
             Comm = new SocketServer(this);
+            RTCtrl = new RouteControl(this, this);
         }
 
 
@@ -88,6 +92,22 @@ namespace EFEMInterface.MessageInterface
             return each;
         }
 
+        private string CmdFormatErrorAssembler(RorzeCommand cmd)
+        {
+            string result = "";
+
+            result = "NAK:MSG|" + cmd.Command;
+
+            foreach (string param in cmd.Parameter)
+            {
+                result += "/" + param;
+            }
+
+            result += ";\r";
+
+            return result;
+        }
+
         private string CmdAssembler(RorzeCommand cmd, string CommandType)
         {
             string result = "";
@@ -143,12 +163,113 @@ namespace EFEMInterface.MessageInterface
             {
                 result += "|" + Factor;
             }
-            if (!Factor.Equals(""))
+            if (!Place.Equals(""))
             {
                 result += "/" + Place;
             }
             result += ";\r";
             return result;
+        }
+
+        private string InfoAssembler(RorzeCommand cmd, string data1, string data2, bool isEvt = false)
+        {
+            string result = "";
+            if (isEvt)
+            {
+                result = "EVT:" + cmd.Command;
+            }
+            else
+            {
+                result = "INF:" + cmd.Command;
+            }
+
+            switch (cmd.Command)
+            {
+                case "MAPDT":
+                    //result += "/" + cmd.Parameter[0] + "/" + data;
+                    result += "/" + cmd.Parameter[0];
+                    if (!data1.Equals(""))
+                    {
+                        result += "/" + data1;
+                    }
+                    break;
+                case "TRANSREQ":
+                    //result += "/" + cmd.Parameter[0] + "/" + data;
+                    result += "/" + cmd.Parameter[0];
+                    if (!data1.Equals(""))
+                    {
+                        result += "/" + data1;
+                    }
+                    break;
+                case "SIGSTAT":
+                    //result += "/" + cmd.Parameter[0] + "/" + data;
+                    result += "/" + cmd.Parameter[0];
+                    if (!data1.Equals(""))
+                    {
+                        result += "/" + data1;
+                    }
+                    if (!data2.Equals(""))
+                    {
+                        result += "/" + data2;
+                    }
+                    break;
+
+
+            }
+
+            return result;
+        }
+
+        private void SendAck(OnHandling WaitForHandle)
+        {
+            //回報收到訊息
+            string CommandMsg = CmdAssembler(WaitForHandle.Cmd, CommandType.ACK);
+            WaitForHandle.NotConfirmMsg = CommandMsg;
+            Comm.Send(WaitForHandle.Handler, CommandMsg);
+            _EventReport.On_CommandMessage("Send:" + CommandMsg);
+        }
+
+        private void SendNak(OnHandling WaitForHandle, string detail)
+        {
+            string ErrorMsg = CmdFormatErrorAssembler(WaitForHandle.Cmd);
+            Comm.Send(WaitForHandle.Handler, ErrorMsg);
+            _EventReport.On_CommandMessage("Err :" + detail);
+            _EventReport.On_CommandMessage("Send:" + ErrorMsg);
+        }
+
+        private void SendABS(OnHandling WaitForHandle, string param1, string param2, string detail)
+        {
+            string ErrorMsg = ErrorAssembler(WaitForHandle.Cmd, param1, param2);
+            Comm.Send(WaitForHandle.Handler, ErrorMsg);
+            _EventReport.On_CommandMessage("Err :" + detail);
+            _EventReport.On_CommandMessage("Send:" + ErrorMsg);
+        }
+
+        private void SendCancel(OnHandling WaitForHandle, string Factor, string Place, string detail)
+        {
+            //回報設備不可使用
+            string CancelMsg = CancelAssembler(WaitForHandle.Cmd, Factor, Place);
+            Comm.Send(WaitForHandle.Handler, CancelMsg);
+            _EventReport.On_CommandMessage("Err :" + detail);
+            _EventReport.On_CommandMessage("Send:" + CancelMsg);
+        }
+
+        private void SendInfo(OnHandling WaitForHandle)
+        {
+            string CommandMsg = CmdAssembler(WaitForHandle.Cmd, CommandType.INF);//傳送動作完成給上位系統
+            WaitForHandle.NotConfirmMsg = CommandMsg;
+            Comm.Send(WaitForHandle.Handler, CommandMsg);
+            _EventReport.On_CommandMessage("Send:" + CommandMsg);
+            WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+        }
+
+        private void SendInfo(OnHandling WaitForHandle,string data1,string data2)
+        {
+            string CommandMsg = InfoAssembler(WaitForHandle.Cmd, data1, data2);//回傳資料給上位系統
+            WaitForHandle.NotConfirmMsg = CommandMsg;
+            Comm.Send(WaitForHandle.Handler, CommandMsg);
+            _EventReport.On_CommandMessage("Send:" + CommandMsg);
+            WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
         }
 
         public void On_Connection_Connecting()
@@ -167,11 +288,9 @@ namespace EFEMInterface.MessageInterface
             WaitForHandle.Cmd = CommunityActive;
             WaitForHandle.Handler = handler;
             OnHandlingCmds.Add(WaitForHandle.ID, WaitForHandle);
-            WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
 
-            string CommandMsg = CmdAssembler(CommunityActive, CommandType.INF);
-            Comm.Send(handler, CommandMsg);
-            _EventReport.On_CommandMessage("Send:" + CommandMsg);
+            SendInfo(WaitForHandle);
+
             _EventReport.On_Connection_Connected();
         }
 
@@ -185,37 +304,25 @@ namespace EFEMInterface.MessageInterface
             _EventReport.On_CommandMessage(Msg.ToString());
         }
 
+
+
         public void On_Connection_Message(Socket handler, string content)
         {
             try
             {
                 _EventReport.On_CommandMessage("Recv:" + content.ToString());
                 RorzeCommand cmd = CmdParser(content);
-
-                
-
+                OnHandling WaitForHandle = null;
                 switch (cmd.CommandType)
                 {
                     case CommandType.GET:
                     case CommandType.SET:
                     case CommandType.MOV:
-                        OnHandling WaitForHandle = new OnHandling(this);
+                        WaitForHandle = new OnHandling(this);
                         WaitForHandle.Cmd = cmd;
                         WaitForHandle.Handler = handler;
                         OnHandlingCmds.Add(WaitForHandle.ID, WaitForHandle);
-                        //回報收到訊息
-                        string CommandMsg = CmdAssembler(cmd, CommandType.ACK);
-                        Comm.Send(handler, CommandMsg);
-                        _EventReport.On_CommandMessage("Send:" + CommandMsg);
 
-                        //處理邏輯開始
-
-
-                        //處理邏輯結束
-                        CommandMsg = CmdAssembler(cmd, CommandType.INF);//傳送動作完成給上位系統
-                        Comm.Send(handler, CommandMsg);
-                        _EventReport.On_CommandMessage("Send:" + CommandMsg);
-                        WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
 
                         break;
                     case CommandType.ACK://收到上位系統回覆
@@ -223,8 +330,8 @@ namespace EFEMInterface.MessageInterface
                         tmp.Sort((x, y) => { return x.ReceiveTime.CompareTo(y.ReceiveTime); });
 
                         var findHandling = from Handling in tmp
-                                       where Handling.Cmd.Command.Equals(cmd.Command)
-                                       select Handling;
+                                           where Handling.Cmd.Command.Equals(cmd.Command)
+                                           select Handling;
 
                         if (findHandling.Count() != 0)
                         {
@@ -232,11 +339,191 @@ namespace EFEMInterface.MessageInterface
                             WaitForHandle.SetTimeOutMonitor(false);//設定Timeout監控停止
                             OnHandlingCmds.Remove(WaitForHandle.ID);//從待處理名單移除
                         }
-                            
-                        
+
+
                         break;
+                    default:
+                        //命令錯誤
+                        SendNak(WaitForHandle, "Command format error.");
+                        SendInfo(WaitForHandle);
+                        return;
                 }
 
+                //處理邏輯開始
+                Node node = null;
+                Transaction txn;
+                switch (cmd.CommandType)
+                {
+                    case CommandType.GET:
+                        switch (cmd.Command.ToUpper())
+                        {
+                            case "MAPDT":
+                                //取得LoadPort Mapping 結果
+                                node = NodeManagement.Get(NodeNameConvert(cmd.Parameter[0], "LOADPORT"));
+                                if (node != null)
+                                {
+                                    SendAck(WaitForHandle);//發送ACK給上位系統
+                                    txn = new Transaction();
+                                    txn.FormName = WaitForHandle.ID;
+                                    txn.Method = Transaction.Command.LoadPortType.GetMapping;
+                                    //node.SendCommand(txn);//下GetMapping命令給Loadport
+
+
+                                    //*********************test begin*********************
+
+                                    SANWA.Utility.ReturnMessage Msg = new SANWA.Utility.ReturnMessage();
+                                    Msg.Command = Transaction.Command.LoadPortType.GetMapping;
+                                    Msg.CommandType = "GET";
+                                    Msg.Value = "1111111111111111111111111";
+
+                                    On_Command_Excuted(node, txn, Msg);
+                                    //*********************test   end*********************
+                                }
+                                else
+                                {
+                                    //回報設備不可使用
+                                    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Loadport not found.");
+                                    SendInfo(WaitForHandle);
+                                }
+                                break;
+
+                            case "TRANSREQ":
+                                //取得E84狀態
+
+                                //*********************test begin*********************
+                                SendAck(WaitForHandle);
+                                SendInfo(WaitForHandle, "STOP", "");
+                                //*********************test   end*********************
+
+                                break;
+                            case "SIGSTAT":
+                                //取得DIO狀態
+
+                                //*********************test begin*********************
+                                SendAck(WaitForHandle);
+                                SendInfo(WaitForHandle, "11111111111111111111111111111111", "11111111111111111111111111111111");
+
+                                //*********************test   end*********************
+
+                                break;
+                        }
+                        break;
+                    case CommandType.SET:
+                        switch (cmd.Command.ToUpper())
+                        {
+                            case "ALIGN":
+                                //設定Aligner旋轉Notch角度
+                                node = NodeManagement.Get(NodeNameConvert(cmd.Parameter[0], "ALIGNER"));//取得Aligner
+                                if (node != null)
+                                {
+                                    //**************************取得補正角度值**************************Begin
+                                    string DestName = "";
+                                    if (cmd.Parameter[1].IndexOf("P") != -1)//指定UnloadPort 
+                                    {
+                                        DestName = NodeNameConvert(cmd.Parameter[1], "LOADPORT");
+                                    }
+                                    else if (cmd.Parameter[1].IndexOf("LL") != -1)//指定Load Lock stage 
+                                    {
+                                        DestName = NodeNameConvert(cmd.Parameter[1], "STAGE");
+                                    }
+
+                                    Node dest = NodeManagement.Get(DestName);//取得目的地UnloadPort
+                                    Node NextRobot = NodeManagement.GetNextRobot(DestName);//取得搬送Robot
+                                    if (dest != null)
+                                    {
+                                        if (NextRobot != null)
+                                        {
+
+                                            RobotPoint ptAligner = PointManagement.GetPoint(NextRobot.Name, node.Name, dest.WaferSize);
+                                            if (ptAligner != null)
+                                            {
+                                                int Offset = ptAligner.Offset;//Aligner補償值
+
+
+                                                RobotPoint ptDest = PointManagement.GetPoint(NextRobot.Name, dest.Name, dest.WaferSize);
+                                                if (ptDest != null)
+                                                {
+                                                    Offset += ptDest.Offset;//加上目的地補償角度
+                                                    Offset += dest.NotchAngle;//加上Notch角度位置
+                                                    node.DesignatesAngle = Offset.ToString();//事先存入Aligner屬性中
+                                                    SendAck(WaitForHandle);
+                                                    SendInfo(WaitForHandle);
+                                                    
+                                                }
+                                                else
+                                                {
+                                                    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "ptDest not found.");
+                                                    SendInfo(WaitForHandle);
+                                                }
+
+                                            }
+                                            else
+                                            {                                              
+                                                SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "ptAligner not found.");
+                                                SendInfo(WaitForHandle);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "NextRobot not found.");
+                                            SendInfo(WaitForHandle);
+                                        }
+                                    }
+                                    else if (cmd.Parameter[1].IndexOf("D") != -1)//指定角度
+                                    {
+                                        string angle = cmd.Parameter[1].Replace("D", "");
+                                        if (angle.Length >= 6)
+                                        {
+                                            angle = angle.Substring(angle.Length - 6, 3);
+                                            node.DesignatesAngle = angle;//事先存入Aligner屬性中
+
+                                            SendAck(WaitForHandle);
+                                        }
+                                        else
+                                        {
+                                            SendNak(WaitForHandle,"Command format error.");
+                                        }
+                                        SendInfo(WaitForHandle);
+                                       
+                                    }
+                                    else
+                                    {                                        
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "NextRobot not found.");
+                                        SendInfo(WaitForHandle);
+                                    }
+                                }
+                                else
+                                {
+                                    //回報設備不可使用
+                                   
+                                    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Aligner not found.");
+                                    SendInfo(WaitForHandle);
+                                }
+                                break;
+                            case "ERROR":
+
+                                break;
+                            case "CLAMP":
+
+                                break;
+                            case "MODE":
+
+                                break;
+                            case "SIGOUT":
+
+                                break;
+                            case "EVENT":
+
+                                break;
+                            case "SIZE":
+
+                                break;
+                        }
+                        break;
+                    case CommandType.MOV:
+
+                        break;
+                }
 
 
 
@@ -246,22 +533,27 @@ namespace EFEMInterface.MessageInterface
                 _EventReport.On_CommandMessage(e.StackTrace);
             }
         }
-      
 
-
-        private string InformationAssembler(RorzeCommand cmd,string data)
+        private string NodeNameConvert(string Param, string NodeType)
         {
             string result = "";
-            switch (cmd.Command)
+            Param = Param.ToUpper();
+            switch (NodeType.ToUpper())
             {
-                case "MAPDT":
+                case "LOADPORT":
+                    int PortNo = Convert.ToInt16(Param.Replace("P", ""));
+                    result = "LOADPORT" + PortNo.ToString("00");
+                    break;
+                case "ALIGNER":
+                    int AlignerNo = Convert.ToInt16(Param.Replace("ALIGN", ""));
+                    result = "ALIGNER" + AlignerNo.ToString("00");
+                    break;
+                case "ROBOT":
 
                     break;
-                case "TRANSREQ":
-
-                    break;
-                case "SIGSTAT":
-
+                case "STAGE":
+                    int StageNo = Convert.ToInt16(Param.Replace("LL", ""));
+                    result = "PM" + StageNo.ToString("00");
                     break;
             }
 
@@ -274,18 +566,121 @@ namespace EFEMInterface.MessageInterface
             if (TimeOutCmd.INF_RetryCount < 3)
             {
                 TimeOutCmd.INF_RetryCount++;
-                string CommandMsg = CmdAssembler(TimeOutCmd.Cmd, CommandType.INF);
-                Comm.Send(TimeOutCmd.Handler, CommandMsg);
-                _EventReport.On_CommandMessage("Send:" + CommandMsg);
+                
+                Comm.Send(TimeOutCmd.Handler, TimeOutCmd.NotConfirmMsg);
+                _EventReport.On_CommandMessage("Send:" + TimeOutCmd.NotConfirmMsg);
             }
             else
             {
                 TimeOutCmd.SetTimeOutMonitor(false);//設定Timeout監控停止
                 OnHandlingCmds.Remove(key);//從待處理名單移除
-                _EventReport.On_CommandMessage("Retry Timeout:" + CmdAssembler(TimeOutCmd.Cmd, CommandType.INF));
+                _EventReport.On_CommandMessage("Retry Timeout:" + TimeOutCmd.NotConfirmMsg);
             }
         }
 
+        #region Event report from Transfer control
+        //***************Event report from Transfer control*****************Begin
 
+        public void On_Command_Excuted(Node Node, Transaction Txn, SANWA.Utility.ReturnMessage Msg)
+        {
+            //處理邏輯結束
+            OnHandling WaitHandle;
+            if (OnHandlingCmds.TryGetValue(Txn.FormName, out WaitHandle))
+            {
+                switch (WaitHandle.Cmd.CommandType)
+                {
+                    case CommandType.GET:
+                        if (WaitHandle.Cmd.Equals("SIGSTAT"))
+                        {
+
+                        }
+                        else
+                        {
+                            SendInfo(WaitHandle, Msg.Value, "");
+                        }
+                        break;
+                    case CommandType.SET:
+                        SendInfo(WaitHandle);
+                        break;
+                }
+            }
+        }
+
+        public void On_Command_Error(Node Node, Transaction Txn, SANWA.Utility.ReturnMessage Msg)
+        {
+            OnHandling WaitHandle;
+            if (OnHandlingCmds.TryGetValue(Txn.FormName, out WaitHandle))
+            {
+                SendABS(WaitHandle, "TBD", "TBD", Msg.Value);
+            }
+        }
+
+        public void On_Command_Finished(Node Node, Transaction Txn, SANWA.Utility.ReturnMessage Msg)
+        {
+
+        }
+
+        public void On_Command_TimeOut(Node Node, Transaction Txn)
+        {
+
+        }
+
+        public void On_Event_Trigger(Node Node, SANWA.Utility.ReturnMessage Msg)
+        {
+
+        }
+
+        public void On_Controller_State_Changed(string Device_ID, string Status)
+        {
+
+        }
+
+        public void On_Script_Finished(Node Node, string ScriptName, string FormName)
+        {
+
+        }
+
+        public void On_Node_State_Changed(Node Node, string Status)
+        {
+            
+        }
+
+        public void On_Eqp_State_Changed(string OldStatus, string NewStatus)
+        {
+           
+        }
+
+        public void On_Port_Begin(string PortName, string FormName)
+        {
+          
+        }
+
+        public void On_Port_Finished(string PortName, string FormName)
+        {
+           
+        }
+
+        public void On_Task_Finished(string FormName, string LapsedTime, int LapsedWfCount, int LapsedLotCount)
+        {
+            
+        }
+
+        public void On_Job_Location_Changed(Job Job)
+        {
+            
+        }
+
+        public void On_InterLock_Report(Node Node, bool InterLock)
+        {
+           
+        }
+
+        public void On_Mode_Changed(string Mode)
+        {
+           
+        }
+
+        //***************Event report from Transfer control*****************End
+        #endregion
     }
 }

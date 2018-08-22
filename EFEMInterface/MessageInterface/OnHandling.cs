@@ -13,6 +13,7 @@ namespace EFEMInterface.MessageInterface
         public string ID { get; set; }
         public RorzeCommand Cmd { get; set; }
         public Socket Handler { get; set; }
+        public string NotConfirmMsg { get; set; }
         public int INF_RetryCount { get; set; }
         public DateTime ReceiveTime { get; set; }
         //逾時

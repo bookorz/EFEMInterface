@@ -53,6 +53,15 @@
     <Compile Include="MessageInterface\RorzeInterface.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\..\SANWAFunction\SANWA\SANWA\SANWA.csproj">
+      <Project>{4eed2ed4-a72e-4f24-8d80-ef2f0b24fcf1}</Project>
+      <Name>SANWA</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\TransferControl\TransferControl\TransferControl.csproj">
+      <Project>{316ccd27-c53f-42f2-ad5e-5ca897dd9ab8}</Project>
+      <Name>TransferControl</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
