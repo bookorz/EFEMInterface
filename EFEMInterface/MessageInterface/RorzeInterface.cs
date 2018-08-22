@@ -216,7 +216,7 @@ namespace EFEMInterface.MessageInterface
 
 
             }
-
+            result += ";\r";
             return result;
         }
 
@@ -224,7 +224,7 @@ namespace EFEMInterface.MessageInterface
         {
             //回報收到訊息
             string CommandMsg = CmdAssembler(WaitForHandle.Cmd, CommandType.ACK);
-            WaitForHandle.NotConfirmMsg = CommandMsg;
+
             Comm.Send(WaitForHandle.Handler, CommandMsg);
             _EventReport.On_CommandMessage("Send:" + CommandMsg);
         }
@@ -241,8 +241,10 @@ namespace EFEMInterface.MessageInterface
         {
             string ErrorMsg = ErrorAssembler(WaitForHandle.Cmd, param1, param2);
             Comm.Send(WaitForHandle.Handler, ErrorMsg);
+            WaitForHandle.NotConfirmMsg = ErrorMsg;
             _EventReport.On_CommandMessage("Err :" + detail);
             _EventReport.On_CommandMessage("Send:" + ErrorMsg);
+            WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
         }
 
         private void SendCancel(OnHandling WaitForHandle, string Factor, string Place, string detail)
@@ -263,7 +265,7 @@ namespace EFEMInterface.MessageInterface
             WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
         }
 
-        private void SendInfo(OnHandling WaitForHandle,string data1,string data2)
+        private void SendInfo(OnHandling WaitForHandle, string data1, string data2)
         {
             string CommandMsg = InfoAssembler(WaitForHandle.Cmd, data1, data2);//回傳資料給上位系統
             WaitForHandle.NotConfirmMsg = CommandMsg;
@@ -359,7 +361,16 @@ namespace EFEMInterface.MessageInterface
                         {
                             case "MAPDT":
                                 //取得LoadPort Mapping 結果
-                                node = NodeManagement.Get(NodeNameConvert(cmd.Parameter[0], "LOADPORT"));
+                                try
+                                {
+                                    node = NodeManagement.Get(NodeNameConvert(cmd.Parameter[0], "LOADPORT"));
+                                }
+                                catch
+                                {
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                    break;
+                                }
                                 if (node != null)
                                 {
                                     SendAck(WaitForHandle);//發送ACK給上位系統
@@ -413,7 +424,16 @@ namespace EFEMInterface.MessageInterface
                         {
                             case "ALIGN":
                                 //設定Aligner旋轉Notch角度
-                                node = NodeManagement.Get(NodeNameConvert(cmd.Parameter[0], "ALIGNER"));//取得Aligner
+                                try
+                                {
+                                    node = NodeManagement.Get(NodeNameConvert(cmd.Parameter[0], "ALIGNER"));//取得Aligner
+                                }
+                                catch
+                                {
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                    break;
+                                }
                                 if (node != null)
                                 {
                                     //**************************取得補正角度值**************************Begin
@@ -448,7 +468,7 @@ namespace EFEMInterface.MessageInterface
                                                     node.DesignatesAngle = Offset.ToString();//事先存入Aligner屬性中
                                                     SendAck(WaitForHandle);
                                                     SendInfo(WaitForHandle);
-                                                    
+
                                                 }
                                                 else
                                                 {
@@ -458,7 +478,7 @@ namespace EFEMInterface.MessageInterface
 
                                             }
                                             else
-                                            {                                              
+                                            {
                                                 SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "ptAligner not found.");
                                                 SendInfo(WaitForHandle);
                                             }
@@ -481,13 +501,13 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         else
                                         {
-                                            SendNak(WaitForHandle,"Command format error.");
+                                            SendNak(WaitForHandle, "Command format error.");
                                         }
                                         SendInfo(WaitForHandle);
-                                       
+
                                     }
                                     else
-                                    {                                        
+                                    {
                                         SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "NextRobot not found.");
                                         SendInfo(WaitForHandle);
                                     }
@@ -495,7 +515,7 @@ namespace EFEMInterface.MessageInterface
                                 else
                                 {
                                     //回報設備不可使用
-                                   
+
                                     SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Aligner not found.");
                                     SendInfo(WaitForHandle);
                                 }
@@ -521,7 +541,8 @@ namespace EFEMInterface.MessageInterface
                         }
                         break;
                     case CommandType.MOV:
-
+                        SendAck(WaitForHandle);
+                        SendABS(WaitForHandle, "TEST", "TEST", "TEST");
                         break;
                 }
 
@@ -545,11 +566,28 @@ namespace EFEMInterface.MessageInterface
                     result = "LOADPORT" + PortNo.ToString("00");
                     break;
                 case "ALIGNER":
-                    int AlignerNo = Convert.ToInt16(Param.Replace("ALIGN", ""));
+                    int AlignerNo = 0;
+                    if (Param.Equals("ALIGN"))
+                    {
+                        AlignerNo = 1;
+                    }
+                    else
+                    {
+                        AlignerNo = Convert.ToInt16(Param.Replace("ALIGN", ""));
+                    }
                     result = "ALIGNER" + AlignerNo.ToString("00");
                     break;
                 case "ROBOT":
-
+                    int RobotNo = 0;
+                    if (Param.Equals("ROB"))
+                    {
+                        RobotNo = 1;
+                    }
+                    else
+                    {
+                        RobotNo = Convert.ToInt16(Param.Replace("ROB", ""));
+                    }
+                    result = "ROBOT" + RobotNo.ToString("00");
                     break;
                 case "STAGE":
                     int StageNo = Convert.ToInt16(Param.Replace("LL", ""));
@@ -566,7 +604,7 @@ namespace EFEMInterface.MessageInterface
             if (TimeOutCmd.INF_RetryCount < 3)
             {
                 TimeOutCmd.INF_RetryCount++;
-                
+
                 Comm.Send(TimeOutCmd.Handler, TimeOutCmd.NotConfirmMsg);
                 _EventReport.On_CommandMessage("Send:" + TimeOutCmd.NotConfirmMsg);
             }
@@ -642,42 +680,42 @@ namespace EFEMInterface.MessageInterface
 
         public void On_Node_State_Changed(Node Node, string Status)
         {
-            
+
         }
 
         public void On_Eqp_State_Changed(string OldStatus, string NewStatus)
         {
-           
+
         }
 
         public void On_Port_Begin(string PortName, string FormName)
         {
-          
+
         }
 
         public void On_Port_Finished(string PortName, string FormName)
         {
-           
+
         }
 
         public void On_Task_Finished(string FormName, string LapsedTime, int LapsedWfCount, int LapsedLotCount)
         {
-            
+
         }
 
         public void On_Job_Location_Changed(Job Job)
         {
-            
+
         }
 
         public void On_InterLock_Report(Node Node, bool InterLock)
         {
-           
+
         }
 
         public void On_Mode_Changed(string Mode)
         {
-           
+
         }
 
         //***************Event report from Transfer control*****************End
