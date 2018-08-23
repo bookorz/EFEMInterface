@@ -947,7 +947,7 @@ namespace EFEMInterface.MessageInterface
                         break;
                     case CommandType.MOV:
                         SendAck(WaitForHandle);
-                        SendABS(WaitForHandle, "TEST", "TEST", "TEST");
+                        SendInfo(WaitForHandle);
                         break;
                 }
 
