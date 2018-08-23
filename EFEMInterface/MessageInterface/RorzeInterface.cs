@@ -46,8 +46,10 @@ namespace EFEMInterface.MessageInterface
             public const string SET = "SET";
             public const string GET = "GET";
             public const string ACK = "ACK";
+            public const string NAK = "NAK";
             public const string ABS = "ABS";
             public const string INF = "INF";
+
         }
 
         public class TransactionType
@@ -397,7 +399,107 @@ namespace EFEMInterface.MessageInterface
                                     SendInfo(WaitForHandle);
                                 }
                                 break;
+                            case "ERROR":
+                                //取得ERROR狀態
 
+                                //*********************test begin*********************
+                                SendAck(WaitForHandle);
+                                SendInfo(WaitForHandle, "COMMAND", "ROBOT");
+
+                                //*********************test   end*********************
+
+                                break;
+                            case "CLAMP":
+                                //取得CLAMP狀態
+                                try
+                                {
+                                    string Device = "";
+                                    if (cmd.Parameter[0].IndexOf("ARM") != -1)
+                                    {
+                                        Device = NodeNameConvert(cmd.Parameter[0], "ARM");
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("ALIGN") != -1)
+                                    {
+                                        Device = NodeNameConvert(cmd.Parameter[0], "ALIGNER");
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                        break;
+                                    }
+
+
+                                    //*********************test begin*********************
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+
+                                    //*********************test   end*********************
+                                }
+                                catch
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                }
+                                break;
+                            case "STATE":
+                                //取得STATE狀態
+
+                                //*********************test begin*********************
+
+                                if (cmd.Parameter[0].Equals("VER"))
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, "VER", "1.0.0.1(2018-08-01)");
+                                }
+                                else if (cmd.Parameter[0].Equals("TRACK"))
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, "TRACK", "NONE/200/300");
+                                }
+                                else if (cmd.Parameter[0].IndexOf("PRS") != -1 && cmd.Parameter[0].Replace("PRS", "").Length != 0)
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, cmd.Parameter[0], "SNO1|00000000,SNO2|00003000,SNO3|00009527,SNO4|88888888");
+                                }
+                                else if (cmd.Parameter[0].IndexOf("FFU") != -1 && cmd.Parameter[0].Replace("FFU", "").Length != 0)
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, cmd.Parameter[0], "FNO1|00000000,FNO2|00003000,FNO3|00009527,FNO4|88888888");
+                                }
+                                else
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                    break;
+                                }
+
+                                //*********************test   end*********************
+
+                                break;
+                            case "MODE":
+                                //取得MODE狀態
+
+                                //*********************test begin*********************
+                                if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length != 0)
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, cmd.Parameter[0], "MANUAL");
+                                }
+                                else
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                    break;
+                                }
+
+                                //*********************test   end*********************
+
+                                break;
                             case "TRANSREQ":
                                 //取得E84狀態
 
@@ -408,7 +510,7 @@ namespace EFEMInterface.MessageInterface
 
                                 break;
                             case "SIGSTAT":
-                                //取得DIO狀態
+                                //取得SIGSTAT狀態
 
                                 //*********************test begin*********************
                                 SendAck(WaitForHandle);
@@ -417,6 +519,99 @@ namespace EFEMInterface.MessageInterface
                                 //*********************test   end*********************
 
                                 break;
+                            case "EVENT":
+                                //取得EVENT狀態
+
+                                //*********************test begin*********************
+                                switch (cmd.Parameter[0])
+                                {
+                                    case "MAPDT":
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                        break;
+                                    case "TRANSREQ":
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                        break;
+                                    case "SYSTEM":
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                        break;
+                                    case "PORT":
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                        break;
+                                    case "PRS":
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                        break;
+                                    case "FFU":
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                        break;
+                                    default:
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                        break;
+                                }
+
+                                //*********************test   end*********************
+
+                                break;
+                            case "CSTID":
+                                //取得CSTID
+
+                                //*********************test begin*********************
+                                if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length != 0)
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, cmd.Parameter[0], "FOUPIDXX");
+                                }
+                                else
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                    break;
+                                }
+
+                                //*********************test   end*********************
+
+                                break;
+                            case "SIZE":
+                                //取得Wafer Size
+
+                                //*********************test begin*********************
+                                if (cmd.Parameter[0].IndexOf("ARM") != -1 && cmd.Parameter[0].Replace("ARM", "").Length != 0)
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, cmd.Parameter[0], "????");
+                                }
+                                else if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length >= 3)
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, cmd.Parameter[0], "NONE");
+                                }
+                                else if (cmd.Parameter[0].IndexOf("ALIGN") != -1 && cmd.Parameter[0].Replace("ALIGN", "").Length != 0)
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, cmd.Parameter[0], "200");
+                                }
+                                else if (cmd.Parameter[0].IndexOf("LL") != -1 && cmd.Parameter[0].Replace("LL", "").Length >= 3)
+                                {
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, cmd.Parameter[0], "300");
+                                }
+                                else
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                }
+                                    //*********************test   end*********************
+
+                                    break;
                         }
                         break;
                     case CommandType.SET:
@@ -592,6 +787,18 @@ namespace EFEMInterface.MessageInterface
                 case "STAGE":
                     int StageNo = Convert.ToInt16(Param.Replace("LL", ""));
                     result = "PM" + StageNo.ToString("00");
+                    break;
+                case "ARM":
+                    int ARMNo = 0;
+                    if (Param.Equals("ARM"))
+                    {
+                        ARMNo = 1;
+                    }
+                    else
+                    {
+                        ARMNo = Convert.ToInt16(Param.Replace("ARM", ""));
+                    }
+                    result = "ARM" + ARMNo.ToString("00");
                     break;
             }
 

@@ -19,11 +19,5 @@ namespace EFEMInterface.MessageInterface
             public const string NOLINK = "NOLINK";
         }
 
-        public class CancelPlace
-        {
-            public const string DUPLICATE = "DUPLICATE";
-            
-        }
-
     }
 }
