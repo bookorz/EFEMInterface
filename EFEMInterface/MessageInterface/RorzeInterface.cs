@@ -413,14 +413,16 @@ namespace EFEMInterface.MessageInterface
                                 //取得CLAMP狀態
                                 try
                                 {
-                                    string Device = "";
+
                                     if (cmd.Parameter[0].IndexOf("ARM") != -1)
                                     {
-                                        Device = NodeNameConvert(cmd.Parameter[0], "ARM");
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
                                     }
                                     else if (cmd.Parameter[0].IndexOf("ALIGN") != -1)
                                     {
-                                        Device = NodeNameConvert(cmd.Parameter[0], "ALIGNER");
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "ON");
                                     }
                                     else
                                     {
@@ -430,12 +432,6 @@ namespace EFEMInterface.MessageInterface
                                         break;
                                     }
 
-
-                                    //*********************test begin*********************
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
-
-                                    //*********************test   end*********************
                                 }
                                 catch
                                 {
@@ -448,35 +444,42 @@ namespace EFEMInterface.MessageInterface
                                 //取得STATE狀態
 
                                 //*********************test begin*********************
-
-                                if (cmd.Parameter[0].Equals("VER"))
+                                try
                                 {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, "VER", "1.0.0.1(2018-08-01)");
+                                    if (cmd.Parameter[0].Equals("VER"))
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, "VER", "1.0.0.1(2018-08-01)");
+                                    }
+                                    else if (cmd.Parameter[0].Equals("TRACK"))
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, "TRACK", "NONE/200/300");
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("PRS") != -1 && cmd.Parameter[0].Replace("PRS", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "SNO1|00000000,SNO2|00003000,SNO3|00009527,SNO4|88888888");
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("FFU") != -1 && cmd.Parameter[0].Replace("FFU", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "FNO1|00000000,FNO2|00003000,FNO3|00009527,FNO4|88888888");
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                        break;
+                                    }
                                 }
-                                else if (cmd.Parameter[0].Equals("TRACK"))
-                                {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, "TRACK", "NONE/200/300");
-                                }
-                                else if (cmd.Parameter[0].IndexOf("PRS") != -1 && cmd.Parameter[0].Replace("PRS", "").Length != 0)
-                                {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, cmd.Parameter[0], "SNO1|00000000,SNO2|00003000,SNO3|00009527,SNO4|88888888");
-                                }
-                                else if (cmd.Parameter[0].IndexOf("FFU") != -1 && cmd.Parameter[0].Replace("FFU", "").Length != 0)
-                                {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, cmd.Parameter[0], "FNO1|00000000,FNO2|00003000,FNO3|00009527,FNO4|88888888");
-                                }
-                                else
+                                catch
                                 {
                                     //命令錯誤
                                     SendNak(WaitForHandle, "Command format error.");
                                     SendInfo(WaitForHandle);
-                                    break;
                                 }
-
                                 //*********************test   end*********************
 
                                 break;
@@ -484,19 +487,27 @@ namespace EFEMInterface.MessageInterface
                                 //取得MODE狀態
 
                                 //*********************test begin*********************
-                                if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length != 0)
+                                try
                                 {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, cmd.Parameter[0], "MANUAL");
+                                    if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "MANUAL");
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                        break;
+                                    }
                                 }
-                                else
+                                catch
                                 {
                                     //命令錯誤
                                     SendNak(WaitForHandle, "Command format error.");
                                     SendInfo(WaitForHandle);
-                                    break;
                                 }
-
                                 //*********************test   end*********************
 
                                 break;
@@ -523,39 +534,47 @@ namespace EFEMInterface.MessageInterface
                                 //取得EVENT狀態
 
                                 //*********************test begin*********************
-                                switch (cmd.Parameter[0])
+                                try
                                 {
-                                    case "MAPDT":
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
-                                        break;
-                                    case "TRANSREQ":
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
-                                        break;
-                                    case "SYSTEM":
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
-                                        break;
-                                    case "PORT":
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
-                                        break;
-                                    case "PRS":
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
-                                        break;
-                                    case "FFU":
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
-                                        break;
-                                    default:
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                    switch (cmd.Parameter[0])
+                                    {
+                                        case "MAPDT":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                            break;
+                                        case "TRANSREQ":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                            break;
+                                        case "SYSTEM":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                            break;
+                                        case "PORT":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                            break;
+                                        case "PRS":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                            break;
+                                        case "FFU":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle, cmd.Parameter[0], "OFF");
+                                            break;
+                                        default:
+                                            //命令錯誤
+                                            SendNak(WaitForHandle, "Command format error.");
+                                            SendInfo(WaitForHandle);
+                                            break;
+                                    }
                                 }
-
+                                catch
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                }
                                 //*********************test   end*********************
 
                                 break;
@@ -563,19 +582,27 @@ namespace EFEMInterface.MessageInterface
                                 //取得CSTID
 
                                 //*********************test begin*********************
-                                if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length != 0)
+                                try
                                 {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, cmd.Parameter[0], "FOUPIDXX");
+                                    if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "FOUPIDXX");
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                        break;
+                                    }
                                 }
-                                else
+                                catch
                                 {
                                     //命令錯誤
                                     SendNak(WaitForHandle, "Command format error.");
                                     SendInfo(WaitForHandle);
-                                    break;
                                 }
-
                                 //*********************test   end*********************
 
                                 break;
@@ -583,35 +610,44 @@ namespace EFEMInterface.MessageInterface
                                 //取得Wafer Size
 
                                 //*********************test begin*********************
-                                if (cmd.Parameter[0].IndexOf("ARM") != -1 && cmd.Parameter[0].Replace("ARM", "").Length != 0)
+                                try
                                 {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, cmd.Parameter[0], "????");
+                                    if (cmd.Parameter[0].IndexOf("ARM") != -1 && cmd.Parameter[0].Replace("ARM", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "????");
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length >= 3)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "NONE");
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("ALIGN") != -1 && cmd.Parameter[0].Replace("ALIGN", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "200");
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("LL") != -1 && cmd.Parameter[0].Replace("LL", "").Length >= 3)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle, cmd.Parameter[0], "300");
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                    }
                                 }
-                                else if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length >= 3)
-                                {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, cmd.Parameter[0], "NONE");
-                                }
-                                else if (cmd.Parameter[0].IndexOf("ALIGN") != -1 && cmd.Parameter[0].Replace("ALIGN", "").Length != 0)
-                                {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, cmd.Parameter[0], "200");
-                                }
-                                else if (cmd.Parameter[0].IndexOf("LL") != -1 && cmd.Parameter[0].Replace("LL", "").Length >= 3)
-                                {
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, cmd.Parameter[0], "300");
-                                }
-                                else
+                                catch
                                 {
                                     //命令錯誤
                                     SendNak(WaitForHandle, "Command format error.");
                                     SendInfo(WaitForHandle);
                                 }
-                                    //*********************test   end*********************
+                                //*********************test   end*********************
 
-                                    break;
+                                break;
                         }
                         break;
                     case CommandType.SET:
@@ -716,22 +752,196 @@ namespace EFEMInterface.MessageInterface
                                 }
                                 break;
                             case "ERROR":
-
+                                try
+                                {
+                                    if (cmd.Parameter[0].Equals("CLEAR"))
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                    }
+                                }
+                                catch
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                }
                                 break;
                             case "CLAMP":
+                                try
+                                {
 
+                                    if (cmd.Parameter[0].IndexOf("ARM") != -1)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("ALIGN") != -1)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                        break;
+                                    }
+
+                                }
+                                catch
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                }
                                 break;
                             case "MODE":
-
+                                try
+                                {
+                                    if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else if(cmd.Parameter[0].Equals("ALL"))
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                        break;
+                                    }
+                                }
+                                catch
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                }
                                 break;
                             case "SIGOUT":
-
+                                try
+                                {
+                                    if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else if (cmd.Parameter[0].Equals("STOWER"))
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                        break;
+                                    }
+                                }
+                                catch
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                }
                                 break;
                             case "EVENT":
-
+                                try
+                                {
+                                    switch (cmd.Parameter[0])
+                                    {
+                                        case "ALL":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle);
+                                            break;
+                                        case "MAPDT":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle);
+                                            break;
+                                        case "TRANSREQ":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle);
+                                            break;
+                                        case "SYSTEM":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle);
+                                            break;
+                                        case "PORT":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle);
+                                            break;
+                                        case "PRS":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle);
+                                            break;
+                                        case "FFU":
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle);
+                                            break;
+                                        default:
+                                            //命令錯誤
+                                            SendNak(WaitForHandle, "Command format error.");
+                                            SendInfo(WaitForHandle);
+                                            break;
+                                    }
+                                }
+                                catch
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                }
                                 break;
                             case "SIZE":
-
+                                try
+                                {
+                                    if (cmd.Parameter[0].IndexOf("ARM") != -1 && cmd.Parameter[0].Replace("ARM", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("P") != -1 && cmd.Parameter[0].Replace("P", "").Length >= 3)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("ALIGN") != -1 && cmd.Parameter[0].Replace("ALIGN", "").Length != 0)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else if (cmd.Parameter[0].IndexOf("LL") != -1 && cmd.Parameter[0].Replace("LL", "").Length >= 3)
+                                    {
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                    }
+                                }
+                                catch
+                                {
+                                    //命令錯誤
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                }
                                 break;
                         }
                         break;
