@@ -1,6 +1,7 @@
 ﻿using EFEMInterface.Comm;
 using log4net;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -11,14 +12,14 @@ using TransferControl.Management;
 
 namespace EFEMInterface.MessageInterface
 {
-    public class RorzeInterface : ICommMessage, IHandlingTimeOutReport, IHostInterfaceReport, IUserInterfaceReport
+    public class RorzeInterface : ICommMessage, IHandlingTimeOutReport, IHostInterfaceReport
     {
         ILog logger = LogManager.GetLogger(typeof(RorzeInterface));
 
-        private Dictionary<string, OnHandling> OnHandlingCmds = new Dictionary<string, OnHandling>();
+        private ConcurrentDictionary<string, OnHandling> OnHandlingCmds = new ConcurrentDictionary<string, OnHandling>();
 
         IEFEMControl _EventReport;
-        RouteControl RTCtrl;
+
 
         SocketServer Comm;
 
@@ -26,7 +27,7 @@ namespace EFEMInterface.MessageInterface
         {
             _EventReport = EventReport;
             Comm = new SocketServer(this);
-            RTCtrl = new RouteControl(this, this);
+
         }
 
 
@@ -69,7 +70,7 @@ namespace EFEMInterface.MessageInterface
 
             each.OrgMsg = Msg;
 
-            string[] content = Msg.Replace(";", "").Replace("\r", "").Split(':', '/');
+            string[] content = Msg.Replace(";", "").Replace("\r", "").Split(':', '/', '>');
 
             for (int i = 0; i < content.Length; i++)
             {
@@ -247,41 +248,70 @@ namespace EFEMInterface.MessageInterface
             _EventReport.On_CommandMessage("Send:" + ErrorMsg);
         }
 
-        private void SendABS(OnHandling WaitForHandle, string param1, string param2, string detail)
-        {
-            string ErrorMsg = ErrorAssembler(WaitForHandle.Cmd, param1, param2);
-            Comm.Send(WaitForHandle.Handler, ErrorMsg);
-            WaitForHandle.NotConfirmMsg = ErrorMsg;
-            _EventReport.On_CommandMessage("Err :" + detail);
-            _EventReport.On_CommandMessage("Send:" + ErrorMsg);
-            WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
-        }
-
         private void SendCancel(OnHandling WaitForHandle, string Factor, string Place, string detail)
         {
             //回報設備不可使用
-            string CancelMsg = CancelAssembler(WaitForHandle.Cmd, Factor, Place);
-            Comm.Send(WaitForHandle.Handler, CancelMsg);
-            _EventReport.On_CommandMessage("Err :" + detail);
-            _EventReport.On_CommandMessage("Send:" + CancelMsg);
+            if (!WaitForHandle.IsReturn)
+            {
+                //WaitForHandle.IsReturn = true;
+                string CancelMsg = CancelAssembler(WaitForHandle.Cmd, Factor, Place);
+                Comm.Send(WaitForHandle.Handler, CancelMsg);
+                _EventReport.On_CommandMessage("Err :" + detail);
+                _EventReport.On_CommandMessage("Send:" + CancelMsg);
+            }
         }
 
         private void SendInfo(OnHandling WaitForHandle)
         {
-            string CommandMsg = CmdAssembler(WaitForHandle.Cmd, CommandType.INF);//傳送動作完成給上位系統
-            WaitForHandle.NotConfirmMsg = CommandMsg;
-            Comm.Send(WaitForHandle.Handler, CommandMsg);
-            _EventReport.On_CommandMessage("Send:" + CommandMsg);
-            WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+            if (!WaitForHandle.IsReturn)
+            {
+                WaitForHandle.IsReturn = true;
+                string CommandMsg = CmdAssembler(WaitForHandle.Cmd, CommandType.INF);//傳送動作完成給上位系統
+                WaitForHandle.NotConfirmMsg = CommandMsg;
+                WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+                Comm.Send(WaitForHandle.Handler, CommandMsg);
+                _EventReport.On_CommandMessage("Send:" + CommandMsg);
+
+            }
         }
 
         private void SendInfo(OnHandling WaitForHandle, string data1, string data2)
         {
-            string CommandMsg = InfoAssembler(WaitForHandle.Cmd, data1, data2);//回傳資料給上位系統
-            WaitForHandle.NotConfirmMsg = CommandMsg;
-            Comm.Send(WaitForHandle.Handler, CommandMsg);
-            _EventReport.On_CommandMessage("Send:" + CommandMsg);
-            WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+            if (!WaitForHandle.IsReturn)
+            {
+                WaitForHandle.IsReturn = true;
+                string CommandMsg = InfoAssembler(WaitForHandle.Cmd, data1, data2);//回傳資料給上位系統
+                WaitForHandle.NotConfirmMsg = CommandMsg;
+                WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+                Comm.Send(WaitForHandle.Handler, CommandMsg);
+                _EventReport.On_CommandMessage("Send:" + CommandMsg);
+
+            }
+        }
+
+        private void SendABS(OnHandling WaitForHandle, string ErrorType)
+        {
+            if (!WaitForHandle.IsReturn)
+            {
+                WaitForHandle.IsReturn = true;
+                string param1 = "";
+                string param2 = "";
+                switch (ErrorType)
+                {
+                    default:
+                        param1 = ErrorType;
+                        param2 = "TEST";
+                        break;
+                }
+
+                string ErrorMsg = ErrorAssembler(WaitForHandle.Cmd, param1, param2);
+                WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+                Comm.Send(WaitForHandle.Handler, ErrorMsg);
+                WaitForHandle.NotConfirmMsg = ErrorMsg;
+                // _EventReport.On_CommandMessage("Err :" + detail);
+                _EventReport.On_CommandMessage("Send:" + ErrorMsg);
+
+            }
         }
 
         public void On_Connection_Connecting()
@@ -299,7 +329,7 @@ namespace EFEMInterface.MessageInterface
             OnHandling WaitForHandle = new OnHandling(this);
             WaitForHandle.Cmd = CommunityActive;
             WaitForHandle.Handler = handler;
-            OnHandlingCmds.Add(WaitForHandle.ID, WaitForHandle);
+            OnHandlingCmds.TryAdd(WaitForHandle.ID, WaitForHandle);
 
             SendInfo(WaitForHandle);
 
@@ -322,8 +352,10 @@ namespace EFEMInterface.MessageInterface
         {
             try
             {
+                int no = 0;
                 _EventReport.On_CommandMessage("Recv:" + content.ToString());
                 RorzeCommand cmd = CmdParser(content);
+
                 OnHandling WaitForHandle = null;
                 switch (cmd.CommandType)
                 {
@@ -333,7 +365,20 @@ namespace EFEMInterface.MessageInterface
                         WaitForHandle = new OnHandling(this);
                         WaitForHandle.Cmd = cmd;
                         WaitForHandle.Handler = handler;
-                        OnHandlingCmds.Add(WaitForHandle.ID, WaitForHandle);
+
+
+                        var findHandling = from Handling in OnHandlingCmds.Values.ToList()
+                                           where Handling.Cmd.Command.Equals(cmd.Command) && Handling.Cmd.CommandType.Equals(CommandType.MOV)
+
+                                           select Handling;
+                        OnHandlingCmds.TryAdd(WaitForHandle.ID, WaitForHandle);
+                        if (findHandling.Count() != 0)
+                        {
+
+                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.BUSY, "DUPLICATE", "Command already exsit.");
+                            SendInfo(WaitForHandle);
+                            return;
+                        }
 
 
                         break;
@@ -341,15 +386,15 @@ namespace EFEMInterface.MessageInterface
                         List<OnHandling> tmp = OnHandlingCmds.Values.ToList();
                         tmp.Sort((x, y) => { return x.ReceiveTime.CompareTo(y.ReceiveTime); });
 
-                        var findHandling = from Handling in tmp
-                                           where Handling.Cmd.Command.Equals(cmd.Command)
-                                           select Handling;
+                        findHandling = from Handling in tmp
+                                       where Handling.Cmd.Command.Equals(cmd.Command)
+                                       select Handling;
 
                         if (findHandling.Count() != 0)
                         {
                             WaitForHandle = findHandling.First();
                             WaitForHandle.SetTimeOutMonitor(false);//設定Timeout監控停止
-                            OnHandlingCmds.Remove(WaitForHandle.ID);//從待處理名單移除
+                            OnHandlingCmds.TryRemove(WaitForHandle.ID, out WaitForHandle);//從待處理名單移除
                         }
 
 
@@ -366,6 +411,8 @@ namespace EFEMInterface.MessageInterface
                 Transaction txn;
                 switch (cmd.CommandType)
                 {
+                    #region GET
+
                     case CommandType.GET:
                         switch (cmd.Command.ToUpper())
                         {
@@ -374,48 +421,66 @@ namespace EFEMInterface.MessageInterface
                                 #region MAPDT
                                 try
                                 {
-                                    int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) &&
-                                        cmd.Parameter[0].Replace("P", "").Length == 1)
+
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-
-
-                                        node = NodeManagement.Get(NodeNameConvert(cmd.Parameter[0], "LOADPORT"));
-
-                                        if (node != null)
+                                        switch (i)
                                         {
-                                            SendAck(WaitForHandle);//發送ACK給上位系統
-                                            txn = new Transaction();
-                                            txn.FormName = WaitForHandle.ID;
-                                            txn.Method = Transaction.Command.LoadPortType.GetMapping;
-                                            //node.SendCommand(txn);//下GetMapping命令給Loadport
+                                            case 0:
+                                                //Designates aligner.
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
 
-
-                                            //*********************test begin*********************
-
-                                            SANWA.Utility.ReturnMessage Msg = new SANWA.Utility.ReturnMessage();
-                                            Msg.Command = Transaction.Command.LoadPortType.GetMapping;
-                                            Msg.CommandType = "GET";
-                                            Msg.Value = "1111111111111111111111111";
-
-                                            On_Command_Excuted(node, txn, Msg);
-                                            //*********************test   end*********************
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
                                         }
-                                        else
-                                        {
-                                            //回報設備不可使用
-                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Loadport not found.");
-                                            SendInfo(WaitForHandle);
-                                        }
+
+                                    }
+                                    //通過檢查
+
+                                    node = NodeManagement.Get(NodeNameConvert(cmd.Parameter[0], "LOADPORT"));
+
+                                    if (node != null)
+                                    {
+                                        SendAck(WaitForHandle);//發送ACK給上位系統
+                                        txn = new Transaction();
+                                        txn.FormName = WaitForHandle.ID;
+                                        txn.Method = Transaction.Command.LoadPortType.GetMapping;
+                                        //node.SendCommand(txn);//下GetMapping命令給Loadport
+
+
+                                        //*********************test begin*********************
+
+                                        SANWA.Utility.ReturnMessage Msg = new SANWA.Utility.ReturnMessage();
+                                        Msg.Command = Transaction.Command.LoadPortType.GetMapping;
+                                        Msg.CommandType = "GET";
+                                        Msg.Value = "1111111111111111111111111";
+
+
+                                        //*********************test   end*********************
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
+                                        //回報設備不可使用
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Loadport not found.");
                                         SendInfo(WaitForHandle);
-                                        break;
                                     }
+
                                 }
                                 catch
                                 {
@@ -427,45 +492,79 @@ namespace EFEMInterface.MessageInterface
                                 break;
                             case "ERROR":
                                 //取得ERROR狀態
+                                //檢查命令格式
+                                try
+                                {
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
+                                    {
+                                        switch (i)
+                                        {
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
 
-                                //*********************test begin*********************
-                                SendAck(WaitForHandle);
-                                SendInfo(WaitForHandle, "COMMAND", "ROBOT");
+                                    }
+                                    //通過檢查
+                                    //*********************test begin*********************
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, "COMMAND", "ROBOT");
 
-                                //*********************test   end*********************
-
+                                    //*********************test   end*********************
+                                }
+                                catch
+                                {
+                                    SendNak(WaitForHandle, "Command format error.");
+                                    SendInfo(WaitForHandle);
+                                    break;
+                                }
                                 break;
                             case "CLAMP":
                                 //取得CLAMP狀態
                                 try
                                 {
-                                    int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("ARM") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("ARM", ""), out no) &&
-                                        cmd.Parameter[0].Replace("ARM", "").Length == 1)
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "OFF", "");
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                //Designates aligner.
+                                                if (cmd.Parameter[i].IndexOf("ARM") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("ARM", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("ARM", "").Length == 1)
+                                                {
+
+                                                }
+                                                else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
+                                                   int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
+                                                   cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
                                     }
-                                    else if (cmd.Parameter[0].IndexOf("ALIGN") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("ALIGN", ""), out no) &&
-                                        cmd.Parameter[0].Replace("ALIGN", "").Length == 1)
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "ON", "");
-                                    }
-                                    else if (cmd.Parameter[0].Equals("ALIGN"))
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "ON", "");
-                                    }
-                                    else
-                                    {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
-                                    }
+                                    //通過檢查
+
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, "ON", "");
+
 
                                 }
                                 catch
@@ -481,38 +580,53 @@ namespace EFEMInterface.MessageInterface
                                 //*********************test begin*********************
                                 try
                                 {
-                                    int no = 0;
-                                    if (cmd.Parameter[0].Equals("VER"))
+                                    string returnValue = "";
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "1.0.0.1(2018-08-01)", "");
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                if (cmd.Parameter[i].Equals("VER"))
+                                                {
+                                                    returnValue = "1.0.0.1(2018-08-01)";
+                                                }
+                                                else if (cmd.Parameter[i].Equals("TRACK"))
+                                                {
+                                                    returnValue = "NONE/200/300";
+                                                }
+                                                else if (cmd.Parameter[i].IndexOf("PRS") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("PRS", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("PRS", "").Length == 1)
+                                                {
+                                                    returnValue = "SNO1|00000000,SNO2|00003000,SNO3|00009527,SNO4|88888888";
+                                                }
+                                                else if (cmd.Parameter[i].IndexOf("FFU") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("FFU", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("FFU", "").Length == 1)
+                                                {
+                                                    returnValue = "FNO1|00000000,FNO2|00003000,FNO3|00009527,FNO4|88888888";
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
                                     }
-                                    else if (cmd.Parameter[0].Equals("TRACK"))
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "NONE/200/300", "");
-                                    }
-                                    else if (cmd.Parameter[0].IndexOf("PRS") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("PRS", ""), out no) &&
-                                        cmd.Parameter[0].Replace("PRS", "").Length == 1)
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "SNO1|00000000,SNO2|00003000,SNO3|00009527,SNO4|88888888", "");
-                                    }
-                                    else if (cmd.Parameter[0].IndexOf("FFU") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("FFU", ""), out no) &&
-                                        cmd.Parameter[0].Replace("FFU", "").Length == 1)
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "FNO1|00000000,FNO2|00003000,FNO3|00009527,FNO4|88888888", "");
-                                    }
-                                    else
-                                    {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
-                                    }
+                                    //通過檢查
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, returnValue, "");
+
                                 }
                                 catch
                                 {
@@ -529,21 +643,38 @@ namespace EFEMInterface.MessageInterface
                                 //*********************test begin*********************
                                 try
                                 {
-                                    int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) &&
-                                        cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "MANUAL", "");
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                //Designates aligner.
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
                                     }
-                                    else
-                                    {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
-                                    }
+                                    //通過檢查
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, "MANUAL", "");
                                 }
                                 catch
                                 {
@@ -558,21 +689,38 @@ namespace EFEMInterface.MessageInterface
                                 //取得E84狀態
                                 try
                                 {
-                                    int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) &&
-                                        cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "STOP", "");
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                //Designates aligner.
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
                                     }
-                                    else
-                                    {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
-                                    }
+                                    //通過檢查
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, "STOP", "");
                                 }
                                 catch
                                 {
@@ -589,26 +737,42 @@ namespace EFEMInterface.MessageInterface
                                 //取得SIGSTAT狀態
                                 try
                                 {
-                                    int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) &&
-                                        cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "11111111111111111111111111111111", "11111111111111111111111111111111");
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                //Designates aligner.
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else if (cmd.Parameter[i].Equals("SYSTEM"))
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
                                     }
-                                    else if (cmd.Parameter[0].Equals("SYSTEM"))
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "11111111111111111111111111111111", "11111111111111111111111111111111");
-                                    }
-                                    else
-                                    {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
-                                    }
+                                    //通過檢查
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, "11111111111111111111111111111111", "11111111111111111111111111111111");
                                 }
                                 catch
                                 {
@@ -628,38 +792,57 @@ namespace EFEMInterface.MessageInterface
                                 //*********************test begin*********************
                                 try
                                 {
-                                    switch (cmd.Parameter[0])
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        case "MAPDT":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle, "OFF", "");
-                                            break;
-                                        case "TRANSREQ":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle, "OFF", "");
-                                            break;
-                                        case "SYSTEM":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle, "OFF", "");
-                                            break;
-                                        case "PORT":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle, "OFF", "");
-                                            break;
-                                        case "PRS":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle, "OFF", "");
-                                            break;
-                                        case "FFU":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle, "OFF", "");
-                                            break;
-                                        default:
-                                            //命令錯誤
-                                            SendNak(WaitForHandle, "Command format error.");
-                                            SendInfo(WaitForHandle);
-                                            break;
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                //Designates aligner.
+                                                if (cmd.Parameter[i].Equals("MAPDT"))
+                                                {
+
+                                                }
+                                                else if (cmd.Parameter[i].Equals("TRANSREQ"))
+                                                {
+
+                                                }
+                                                else if (cmd.Parameter[i].Equals("SYSTEM"))
+                                                {
+
+                                                }
+                                                else if (cmd.Parameter[i].Equals("PORT"))
+                                                {
+
+                                                }
+                                                else if (cmd.Parameter[i].Equals("PRS"))
+                                                {
+
+                                                }
+                                                else if (cmd.Parameter[i].Equals("FFU"))
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
                                     }
+                                    //通過檢查
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, "OFF", "");
+
                                 }
                                 catch
                                 {
@@ -676,19 +859,38 @@ namespace EFEMInterface.MessageInterface
                                 //*********************test begin*********************
                                 try
                                 {
-                                    int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 && int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) && cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "FOUPIDXX", "");
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                //Designates aligner.
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
                                     }
-                                    else
-                                    {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
-                                    }
+                                    //通過檢查
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle, "FOUPIDXX", "");
                                 }
                                 catch
                                 {
@@ -705,7 +907,7 @@ namespace EFEMInterface.MessageInterface
                                 //*********************test begin*********************
                                 try
                                 {
-                                    int no = 0;
+                                    //int no = 0;
                                     //檢查命令格式
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
@@ -795,6 +997,8 @@ namespace EFEMInterface.MessageInterface
                                 break;
                         }
                         break;
+                    #endregion
+                    #region SET
                     case CommandType.SET:
                         switch (cmd.Command.ToUpper())
                         {
@@ -802,7 +1006,7 @@ namespace EFEMInterface.MessageInterface
                                 //設定Aligner旋轉Notch角度
                                 try
                                 {
-                                    int no = 0;
+                                    //int no = 0;
                                     //檢查命令格式
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
@@ -987,7 +1191,7 @@ namespace EFEMInterface.MessageInterface
                             case "CLAMP":
                                 try
                                 {
-                                    int no = 0;
+                                    //int no = 0;
                                     //檢查命令格式
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
@@ -1056,7 +1260,7 @@ namespace EFEMInterface.MessageInterface
                             case "MODE":
                                 try
                                 {
-                                    int no = 0;
+                                    //int no = 0;
                                     //檢查命令格式
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
@@ -1120,7 +1324,7 @@ namespace EFEMInterface.MessageInterface
                                 try
                                 {
                                     //檢查命令格式
-                                    int no = 0;
+                                    //int no = 0;
                                     string target = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
@@ -1309,7 +1513,7 @@ namespace EFEMInterface.MessageInterface
                             case "SIZE":
                                 try
                                 {
-                                    int no = 0;
+                                    //int no = 0;
                                     //檢查命令格式
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
@@ -1399,55 +1603,91 @@ namespace EFEMInterface.MessageInterface
                                 break;
                         }
                         break;
+                    #endregion
+                    #region MOV
+
                     case CommandType.MOV:
                         switch (cmd.Command.ToUpper())
                         {
                             case "INIT":
-                                int no = 0;
+                                //int no = 0;
                                 //初始化
                                 try
                                 {
-                                    
-                                    if (cmd.Parameter[0].Equals("ALL"))
+                                    //檢查命令格式
+
+                                    string TaskName = "";
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                TaskName = cmd.Parameter[i];
+                                                //If the parameter is omitted, the system acts in the same manner as when "ALL" is designated.
+                                                if (cmd.Parameter[i].Equals("ALL"))
+                                                {
+
+
+                                                }
+                                                else if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                   int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                   cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+
+
+                                                }
+                                                else if (cmd.Parameter[i].IndexOf("ROB") != -1 &&
+                                                  int.TryParse(cmd.Parameter[i].Replace("ROB", ""), out no) &&
+                                                   cmd.Parameter[i].Replace("ROB", "").Length == 1)
+                                                {
+
+
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ROB"))
+                                                {
+                                                    TaskName = "ROB1";
+                                                }
+                                                else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
+                                                   cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
+                                                {
+
+
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ALIGN"))
+                                                {
+                                                    TaskName = "ALIGN1";
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
                                     }
-                                    else if (cmd.Parameter[0].IndexOf("P") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) &&
-                                        cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_Init";
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
-                                    }
-                                    else if (cmd.Parameter[0].Equals("ROB"))
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
-                                    }
-                                    else if (cmd.Parameter[0].IndexOf("ROB") != -1
-                                        && int.TryParse(cmd.Parameter[0].Replace("ROB", ""), out no) &&
-                                        cmd.Parameter[0].Replace("ROB", "").Length == 1)
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
-                                    }
-                                    else if (cmd.Parameter[0].Equals("ALIGN"))
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
-                                    }
-                                    else if (cmd.Parameter[0].IndexOf("ALIGN") != -1 && int.TryParse(cmd.Parameter[0].Replace("ALIGN", ""), out no))
-                                    {
-                                        SendAck(WaitForHandle);
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1459,52 +1699,89 @@ namespace EFEMInterface.MessageInterface
                                 break;
                             case "ORGSH":
                                 //原點復歸 
-                               // int no = 0;
+                                // int no = 0;
                                 try
                                 {
-                                   
-                                    if (cmd.Parameter[0].Equals("ALL"))
+                                    string TaskName = "";
+                                    string Target = "";
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                
+                                                
+                                                //If the parameter is omitted, the system acts in the same manner as when "ALL" is designated.
+                                                if (cmd.Parameter[i].Equals("ALL"))
+                                                {
+                                                    TaskName = cmd.Parameter[i];
+                                                }
+                                                else if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                   int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                   cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+                                                    TaskName = "LOADPORT";
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
+                                                }
+                                                else if (cmd.Parameter[i].IndexOf("ROB") != -1 &&
+                                                  int.TryParse(cmd.Parameter[i].Replace("ROB", ""), out no) &&
+                                                   cmd.Parameter[i].Replace("ROB", "").Length == 1)
+                                                {
+                                                    TaskName = "ROBOT";
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "ROBOT");
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ROB"))
+                                                {
+                                                    TaskName = "ROBOT";
+                                                    Target = NodeNameConvert("ROB1", "ROBOT");                                                    
+                                                }
+                                                else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
+                                                   cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
+                                                {
+                                                    TaskName = "ALIGNER";
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ALIGN"))
+                                                {
+                                                    TaskName = "ALIGNER";
+                                                    Target = NodeNameConvert("ALIGN1", "ALIGNER");                                                    
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
                                     }
-                                    else if (cmd.Parameter[0].IndexOf("P") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) &&
-                                        cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_ORGSH";
+
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+
+                                    if (!ErrorMessage.Equals(""))
                                     {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
-                                    }
-                                    else if (cmd.Parameter[0].Equals("ROB"))
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
-                                    }
-                                    else if (cmd.Parameter[0].IndexOf("ROB") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("ROB", ""), out no) &&
-                                        cmd.Parameter[0].Replace("ROB", "").Length == 1)
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
-                                    }
-                                    else if (cmd.Parameter[0].Equals("ALIGN"))
-                                    {
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
-                                    }
-                                    else if (cmd.Parameter[0].IndexOf("ALIGN") != -1 &&
-                                        int.TryParse(cmd.Parameter[0].Replace("ALIGN", ""), out no) &&
-                                        cmd.Parameter[0].Replace("ALIGN", "").Length == 1)
-                                    {
-                                        SendAck(WaitForHandle);
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1519,18 +1796,52 @@ namespace EFEMInterface.MessageInterface
                                 //LoadPort Clamp lock
                                 try
                                 {
-                                    //int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 && int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) && cmd.Parameter[0].Replace("P", "").Length == 1)
+
+                                    string TaskName = "";
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                //Designates aligner.
+                                                TaskName = cmd.Parameter[i];
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
+                                    }
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_LOCK";
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1543,21 +1854,55 @@ namespace EFEMInterface.MessageInterface
                             case "UNLOCK":
                                 //LoadPort Clamp unlock
                                 //If FOUP is not closed, closes FOUP.
-                                //If FOUP is not moved to undock position, unlocks FOUP clamp after moving FOUP to undock position.
+                                //If FOUP is not moved to undock position, unlocks FOUP clamp after moving FOUP to undock position.
+
                                 try
                                 {
-                                    //int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 && int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) && cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    string TaskName = "";
+                                    //檢查命令格式
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+
+                                                TaskName = cmd.Parameter[i];
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
+                                    }
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_UNLOCK";
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1572,18 +1917,51 @@ namespace EFEMInterface.MessageInterface
                                 //If FOUP is not clamped, moves FOUP to dock position after clamping it.
                                 try
                                 {
-                                   // int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 && int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) && cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //檢查命令格式
+                                    string TaskName = "";
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+
+                                                TaskName = cmd.Parameter[i];
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
+                                    }
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_DOCK";
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1598,18 +1976,50 @@ namespace EFEMInterface.MessageInterface
                                 //If FOUP is not closed, moves FOUP to undock position after closing it.                               
                                 try
                                 {
-                                   // int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 && int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) && cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //檢查命令格式
+                                    string TaskName = "";
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                TaskName = cmd.Parameter[i];
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
+                                    }
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_UNDOCK";
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1626,18 +2036,50 @@ namespace EFEMInterface.MessageInterface
                                   If FOUP is not moved to dock position, FOUP door is opened after moving FOUP to dock position.*/
                                 try
                                 {
-                                    //int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 && int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) && cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //檢查命令格式
+                                    string TaskName = "";
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                TaskName = cmd.Parameter[i];
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
+                                    }
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_OPEN";
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1652,18 +2094,50 @@ namespace EFEMInterface.MessageInterface
                                 //Closes FOUP door to dock position
                                 try
                                 {
-                                    //int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 && int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) && cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //檢查命令格式
+                                    string TaskName = "";
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                TaskName = cmd.Parameter[i];
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
+                                    }
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_CLOSE";
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1677,18 +2151,50 @@ namespace EFEMInterface.MessageInterface
                                 //Performs wafer mapping for opened FOUP.
                                 try
                                 {
-                                    //int no = 0;
-                                    if (cmd.Parameter[0].IndexOf("P") != -1 && int.TryParse(cmd.Parameter[0].Replace("P", ""), out no) && cmd.Parameter[0].Replace("P", "").Length == 1)
+                                    //檢查命令格式
+                                    string TaskName = "";
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                TaskName = cmd.Parameter[i];
+                                                if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+
+                                    }
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_WAFSH";
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                        break;
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1704,6 +2210,12 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //int no = 0;
                                     //檢查命令格式
+                                    string TaskName = "";
+                                    string Slot = "";
+                                    string Target = "";
+                                    string Position = "";
+                                    string Arm = "";
+
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -1715,22 +2227,36 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 3)
                                                 {
-
+                                                    Target = cmd.Parameter[i].Substring(0, 2);
+                                                    Slot = no.ToString().Substring(1);
+                                                    Position = NodeNameConvert(Target, "LOADPORT");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no))
                                                 {
-
+                                                    Target = cmd.Parameter[i];
+                                                    Slot = "1";
+                                                    Position = NodeNameConvert(Target, "ALIGNER");
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-
+                                                    Target = "ALIGN1";
+                                                    Position = NodeNameConvert(Target, "ALIGNER");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
-                                                    int.TryParse(cmd.Parameter[i].Replace("LL", ""), out no) &&
-                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 || cmd.Parameter[i].Replace("LL", "").Length == 3))
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 ||
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 3) && int.TryParse(cmd.Parameter[i].Substring(3), out no)))
                                                 {
-
+                                                    Target = cmd.Parameter[i].Substring(0, 3);
+                                                    Position = NodeNameConvert(Target, "STAGE");
+                                                    if (cmd.Parameter[i].Replace("LL", "").Length == 3)
+                                                    {
+                                                        Slot = no.ToString();
+                                                    }
+                                                    else
+                                                    {
+                                                        Slot = "1";
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -1739,13 +2265,19 @@ namespace EFEMInterface.MessageInterface
                                                     SendInfo(WaitForHandle);
                                                     return;
                                                 }
+
+                                                //TaskName = Target;
                                                 break;
                                             case 1:
-
+                                                //TaskName += cmd.Parameter[i];
                                                 //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
-                                                if ((cmd.Parameter[i].Equals("ARM1") || cmd.Parameter[i].Equals("ARM2") || cmd.Parameter[i].Equals("ARM3")))
+                                                if ((cmd.Parameter[i].Equals("ARM1")) || cmd.Parameter[i].Equals("ARM3"))
                                                 {
-
+                                                    Arm = "1";
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ARM2"))
+                                                {
+                                                    Arm = "2";
                                                 }
                                                 else
                                                 {
@@ -1757,7 +2289,7 @@ namespace EFEMInterface.MessageInterface
 
                                                 break;
                                             case 2:
-
+                                                TaskName += cmd.Parameter[i];
                                                 //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
                                                 if ((cmd.Parameter[i].Equals("UP") || cmd.Parameter[i].Equals("DOWN")))
                                                 {
@@ -1781,8 +2313,24 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+
+                                    string ErrorMessage = "";
+                                    TaskName += "_GOTO";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Slot", Slot);
+                                    param.Add("@Arm", Arm);
+                                    param.Add("@Position", Position);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
 
                                 }
                                 catch
@@ -1796,8 +2344,13 @@ namespace EFEMInterface.MessageInterface
                                 //The robot carries out a wafer from designated position.
                                 try
                                 {
-                                   // int no = 0;
+                                    // int no = 0;
                                     //檢查命令格式
+                                    string TaskName = "";
+                                    string Slot = "";
+                                    string Target = "";
+                                    string Position = "";
+                                    string Arm = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -1809,22 +2362,37 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 3)
                                                 {
-
+                                                    Target = cmd.Parameter[i].Substring(0, 2);
+                                                    Slot = no.ToString().Substring(1);
+                                                    Position = NodeNameConvert(Target, "LOADPORT");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no))
                                                 {
-
+                                                    Target = cmd.Parameter[i];
+                                                    Slot = "1";
+                                                    Position = NodeNameConvert(Target, "ALIGNER");
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-
+                                                    Target = "ALIGN1";
+                                                    Slot = "1";
+                                                    Position = NodeNameConvert(Target, "ALIGNER");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
-                                                    int.TryParse(cmd.Parameter[i].Replace("LL", ""), out no) &&
-                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 || cmd.Parameter[i].Replace("LL", "").Length == 3))
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 ||
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 3 && int.TryParse(cmd.Parameter[i].Substring(3), out no))))
                                                 {
-
+                                                    Target = cmd.Parameter[i].Substring(0, 3);
+                                                    Position = NodeNameConvert(Target, "STAGE");
+                                                    if (cmd.Parameter[i].Replace("LL", "").Length == 3)
+                                                    {
+                                                        Slot = no.ToString();
+                                                    }
+                                                    else
+                                                    {
+                                                        Slot = "1";
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -1833,13 +2401,22 @@ namespace EFEMInterface.MessageInterface
                                                     SendInfo(WaitForHandle);
                                                     return;
                                                 }
+                                                //TaskName = Target;
                                                 break;
                                             case 1:
-
+                                                //TaskName += cmd.Parameter[i];
                                                 //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
-                                                if ((cmd.Parameter[i].Equals("ARM1") || cmd.Parameter[i].Equals("ARM2") || cmd.Parameter[i].Equals("ARM3")))
+                                                if ((cmd.Parameter[i].Equals("ARM1")))
                                                 {
-
+                                                    Arm = "1";
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ARM2"))
+                                                {
+                                                    Arm = "2";
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ARM3"))
+                                                {
+                                                    Arm = "3";
                                                 }
                                                 else
                                                 {
@@ -1859,8 +2436,24 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+
+                                    string ErrorMessage = "";
+                                    TaskName = "LOAD";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Slot", Slot);
+                                    param.Add("@Arm", Arm);
+                                    param.Add("@Position", Position);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -1875,33 +2468,53 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //int no = 0;
                                     //檢查命令格式
+                                    string TaskName = "";
+                                    string Slot = "";
+                                    string Target = "";
+                                    string Position = "";
+                                    string Arm = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
                                         {
                                             case 0:
-
+                                                //TaskName = cmd.Parameter[i];
                                                 //Parameter 1 designates transfer source, and Parameter 4 designates transfer destination.
                                                 if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 3)
                                                 {
-
+                                                    Target = cmd.Parameter[i].Substring(0, 2);
+                                                    Slot = no.ToString().Substring(1);
+                                                    Position = NodeNameConvert(Target, "LOADPORT");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no))
                                                 {
-
+                                                    Target = cmd.Parameter[i];
+                                                    Slot = "1";
+                                                    Position = NodeNameConvert(Target, "ALIGNER");
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-
+                                                    Target = "ALIGN1";
+                                                    Slot = "1";
+                                                    Position = NodeNameConvert(Target, "ALIGNER");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
-                                                    int.TryParse(cmd.Parameter[i].Replace("LL", ""), out no) &&
-                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 || cmd.Parameter[i].Replace("LL", "").Length == 3))
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 ||
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 3 && int.TryParse(cmd.Parameter[i].Substring(3), out no))))
                                                 {
-
+                                                    Target = cmd.Parameter[i].Substring(0, 3);
+                                                    Position = NodeNameConvert(Target, "STAGE");
+                                                    if (cmd.Parameter[i].Replace("LL", "").Length == 3)
+                                                    {
+                                                        Slot = no.ToString();
+                                                    }
+                                                    else
+                                                    {
+                                                        Slot = "1";
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -1912,11 +2525,19 @@ namespace EFEMInterface.MessageInterface
                                                 }
                                                 break;
                                             case 1:
-
+                                                //TaskName += cmd.Parameter[i];
                                                 //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
-                                                if ((cmd.Parameter[i].Equals("ARM1") || cmd.Parameter[i].Equals("ARM2") || cmd.Parameter[i].Equals("ARM3")))
+                                                if ((cmd.Parameter[i].Equals("ARM1")))
                                                 {
-
+                                                    Arm = "1";
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ARM2"))
+                                                {
+                                                    Arm = "2";
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ARM3"))
+                                                {
+                                                    Arm = "3";
                                                 }
                                                 else
                                                 {
@@ -1936,8 +2557,24 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+
+                                    string ErrorMessage = "";
+                                    TaskName = "UNLOAD";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Slot", Slot);
+                                    param.Add("@Arm", Arm);
+                                    param.Add("@Position", Position);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -1952,33 +2589,94 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //int no = 0;
                                     //檢查命令格式
+                                    string TaskName = "";
+                                    string FromSlot = "";
+                                    string FromARM = "";
+                                    string FromTarget = "";
+                                    string ToSlot = "";
+                                    string ToARM = "";
+                                    string ToTarget = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
                                         {
                                             case 0:
                                             case 3:
+
                                                 //Parameter 1 designates transfer source, and Parameter 4 designates transfer destination.
                                                 if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 3)
                                                 {
-
+                                                    if (i == 0)
+                                                    {
+                                                        FromTarget = NodeNameConvert(cmd.Parameter[i].Substring(0, 2), "LOADPORT");
+                                                        FromSlot = no.ToString().Substring(1);
+                                                    }
+                                                    else if (i == 3)
+                                                    {
+                                                        ToTarget = NodeNameConvert(cmd.Parameter[i].Substring(0, 2), "LOADPORT");
+                                                        ToSlot = no.ToString().Substring(1);
+                                                    }
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no))
                                                 {
-
+                                                    if (i == 0)
+                                                    {
+                                                        FromTarget = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
+                                                        FromSlot = "1";
+                                                    }
+                                                    else if (i == 3)
+                                                    {
+                                                        ToTarget = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
+                                                        ToSlot = "1";
+                                                    }
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-
+                                                    if (i == 0)
+                                                    {
+                                                        FromTarget = NodeNameConvert("ALIGN1", "ALIGNER");
+                                                        FromSlot = "1";
+                                                    }
+                                                    else if (i == 3)
+                                                    {
+                                                        ToTarget = NodeNameConvert("ALIGN1", "ALIGNER");
+                                                        ToSlot = "1";
+                                                    }
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
-                                                    int.TryParse(cmd.Parameter[i].Replace("LL", ""), out no) &&
-                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 || cmd.Parameter[i].Replace("LL", "").Length == 3))
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 ||
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 3 && int.TryParse(cmd.Parameter[i].Substring(3), out no))))
                                                 {
+                                                    if (i == 0)
+                                                    {
+                                                        if (cmd.Parameter[i].Replace("LL", "").Length == 3)
+                                                        {
+                                                            FromTarget = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
+                                                            FromSlot = no.ToString();
+                                                        }
+                                                        else
+                                                        {
+                                                            FromTarget = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
+                                                            FromSlot = "1";
+                                                        }
 
+                                                    }
+                                                    else if (i == 3)
+                                                    {
+                                                        if (cmd.Parameter[i].Replace("LL", "").Length == 3)
+                                                        {
+                                                            ToTarget = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
+                                                            ToSlot = no.ToString();
+                                                        }
+                                                        else
+                                                        {
+                                                            ToTarget = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
+                                                            ToSlot = "1";
+                                                        }
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -1990,10 +2688,51 @@ namespace EFEMInterface.MessageInterface
                                                 break;
                                             case 1:
                                             case 2:
+
                                                 //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
                                                 if ((cmd.Parameter[i].Equals("ARM1") || cmd.Parameter[i].Equals("ARM2") || cmd.Parameter[i].Equals("ARM3")))
                                                 {
-
+                                                    if (i == 1)
+                                                    {
+                                                        FromARM = cmd.Parameter[i];
+                                                    }
+                                                    else if (i == 2)
+                                                    {
+                                                        ToARM = cmd.Parameter[i];
+                                                    }
+                                                }
+                                                if ((cmd.Parameter[i].Equals("ARM1")))
+                                                {
+                                                    if (i == 1)
+                                                    {
+                                                        FromARM = "1";
+                                                    }
+                                                    else if (i == 2)
+                                                    {
+                                                        ToARM = "1";
+                                                    }
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ARM2"))
+                                                {
+                                                    if (i == 1)
+                                                    {
+                                                        FromARM = "2";
+                                                    }
+                                                    else if (i == 2)
+                                                    {
+                                                        ToARM = "2";
+                                                    }
+                                                }
+                                                else if (cmd.Parameter[i].Equals("ARM3"))
+                                                {
+                                                    if (i == 1)
+                                                    {
+                                                        FromARM = "3";
+                                                    }
+                                                    else if (i == 2)
+                                                    {
+                                                        ToARM = "3";
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -2012,12 +2751,29 @@ namespace EFEMInterface.MessageInterface
                                         }
 
                                     }
-                                    //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+                                    //通過檢查  FromTarget + FromARM + ToTarget + ToARM +
 
+                                    string ErrorMessage = "";
+                                    TaskName = "TRANS";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@FromTarget", FromTarget);
+                                    param.Add("@ToTarget", ToTarget);
+                                    param.Add("@FromARM", FromARM);
+                                    param.Add("@ToARM", ToARM);
+                                    param.Add("@FromSlot", FromSlot);
+                                    param.Add("@ToSlot", ToSlot);
 
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -2033,6 +2789,11 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //int no = 0;
                                     //檢查命令格式
+                                    string TaskName = "";
+                                    string Target = "";
+                                    string TargetSlot = "";
+                                    string CarryOutARM = "";
+                                    string CarryInARM = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -2043,17 +2804,28 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
                                                     cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
+                                                    TargetSlot = "1";
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-
+                                                    Target = NodeNameConvert("ALIGN1", "ALIGNER");
+                                                    TargetSlot = "1";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
-                                                    int.TryParse(cmd.Parameter[i].Replace("LL", ""), out no) &&
-                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 || cmd.Parameter[i].Replace("LL", "").Length == 3))
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 1 ||
+                                                    (cmd.Parameter[i].Replace("LL", "").Length == 3 && int.TryParse(cmd.Parameter[i].Substring(3), out no))))
                                                 {
-
+                                                    if (cmd.Parameter[i].Replace("LL", "").Length == 3)
+                                                    {
+                                                        Target = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
+                                                        TargetSlot = no.ToString();
+                                                    }
+                                                    else
+                                                    {
+                                                        Target = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
+                                                        TargetSlot = "1";
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -2064,10 +2836,18 @@ namespace EFEMInterface.MessageInterface
                                                 }
                                                 break;
                                             case 1:
+                                            case 2:
                                                 //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
                                                 if ((cmd.Parameter[i].Equals("ARM1") || cmd.Parameter[i].Equals("ARM2")))
                                                 {
-
+                                                    if (i == 1)
+                                                    {
+                                                        CarryOutARM = cmd.Parameter[i].Replace("ARM", "");
+                                                    }
+                                                    else if (i == 2)
+                                                    {
+                                                        CarryInARM = cmd.Parameter[i].Replace("ARM", "");
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -2086,8 +2866,26 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+
+                                    string ErrorMessage = "";
+                                    TaskName = "CHANGE";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    param.Add("@Slot", TargetSlot);
+                                    param.Add("@CarryOutARM", CarryOutARM);
+                                    param.Add("@CarryInARM", CarryInARM);
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -2102,6 +2900,9 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //int no = 0;
                                     //檢查命令格式
+                                    string TaskName = "";
+                                    string Slot = "";
+                                    string Target = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -2112,17 +2913,28 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
                                                     cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
                                                 {
-
+                                                    Target = cmd.Parameter[i];
+                                                    Slot = "1";
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-
+                                                    Target = "ALIGN1";
+                                                    Slot = "1";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("LL", ""), out no) &&
                                                     (cmd.Parameter[i].Replace("LL", "").Length == 1 || cmd.Parameter[i].Replace("LL", "").Length == 3))
                                                 {
-
+                                                    if (cmd.Parameter[i].Replace("LL", "").Length == 3)
+                                                    {
+                                                        Target = cmd.Parameter[i].Substring(0, 2);
+                                                        Slot = no.ToString().Substring(1);
+                                                    }
+                                                    else
+                                                    {
+                                                        Target = cmd.Parameter[i].Substring(0, 2);
+                                                        Slot = "1";
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -2141,8 +2953,23 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+
+                                    string ErrorMessage = "";
+                                    TaskName = "ALIGN";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", NodeNameConvert(Target, "ALIGNER"));
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -2156,8 +2983,11 @@ namespace EFEMInterface.MessageInterface
                                 //Moves each unit to the home position. (waiting position before transfer)
                                 try
                                 {
-                                   // int no = 0;
+                                    // int no = 0;
                                     //檢查命令格式
+                                    string TaskName = "";
+                                    string Target = "";
+                                    string Method = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -2168,26 +2998,31 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("ROB", ""), out no) &&
                                                     cmd.Parameter[i].Replace("ROB", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "ROBOT");
+                                                    Method = "RobotHome";
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ROB"))
                                                 {
-
+                                                    Target = NodeNameConvert("ROB1", "ROBOT");
+                                                    Method = "RobotHome";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                    int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
                                                    cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
+                                                    Method = "AlignerHome";
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-
+                                                    Target = NodeNameConvert("ALIGN1", "ALIGNER");
+                                                    Method = "AlignerHome";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
 
                                                 }
                                                 else
@@ -2207,8 +3042,32 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+                                    string ErrorMessage = "";
+                                    if (Target.IndexOf("LOADPORT") != -1)
+                                    {
+                                        TaskName = "LOADPORT_Init";
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", Target);
+                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                    }
+                                    else
+                                    {
+                                        TaskName = "HOME";
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", Target);
+                                        param.Add("@Method", Method);
+
+                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                    }
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -2235,7 +3094,22 @@ namespace EFEMInterface.MessageInterface
                                     }
                                     //通過檢查
                                     SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+                                    string ErrorMessage = "";
+                                    string TaskName = "HOLD";
+                                    //Dictionary<string, string> param = new Dictionary<string, string>();
+
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -2260,8 +3134,23 @@ namespace EFEMInterface.MessageInterface
                                         }
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+                                  
+                                    string ErrorMessage = "";
+                                    string TaskName = "RESTR";
+                                    //Dictionary<string, string> param = new Dictionary<string, string>();
+
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -2287,8 +3176,23 @@ namespace EFEMInterface.MessageInterface
                                         }
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+                                   
+                                    string ErrorMessage = "";
+                                    string TaskName = "ABORT";
+                                    //Dictionary<string, string> param = new Dictionary<string, string>();
+
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -2316,7 +3220,22 @@ namespace EFEMInterface.MessageInterface
                                     }
                                     //通過檢查
                                     SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+                                    string ErrorMessage = "";
+                                    string TaskName = "EMS";
+                                    //Dictionary<string, string> param = new Dictionary<string, string>();
+
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
                                 }
                                 catch
                                 {
@@ -2326,7 +3245,8 @@ namespace EFEMInterface.MessageInterface
                                 }
                                 break;
                             case "TRANSREQ":
-                                //Requests for E84 automatic transfer, or acquires current request status for each port.                                //int no = 0;
+                                //Requests for E84 automatic transfer, or acquires current request status for each port.
+                                //int no = 0;
                                 //檢查命令格式
                                 for (int i = 0; i < cmd.Parameter.Count; i++)
                                 {
@@ -2339,7 +3259,7 @@ namespace EFEMInterface.MessageInterface
                                                 cmd.Parameter[i].Replace("P", "").Length == 1)
                                             {
 
-                                            } 
+                                            }
                                             else
                                             {
                                                 //命令錯誤
@@ -2471,6 +3391,7 @@ namespace EFEMInterface.MessageInterface
                                 break;
                         }
                         break;
+                        #endregion
                 }
 
 
@@ -2489,7 +3410,7 @@ namespace EFEMInterface.MessageInterface
             switch (NodeType.ToUpper())
             {
                 case "LOADPORT":
-                    int PortNo = Convert.ToInt16(Param.Replace("P", ""));
+                    int PortNo = Convert.ToInt16(Param.Replace("P", "").Substring(0, 1));
                     result = "LOADPORT" + PortNo.ToString("00");
                     break;
                 case "ALIGNER":
@@ -2517,21 +3438,10 @@ namespace EFEMInterface.MessageInterface
                     result = "ROBOT" + RobotNo.ToString("00");
                     break;
                 case "STAGE":
-                    int StageNo = Convert.ToInt16(Param.Replace("LL", ""));
-                    result = "PM" + StageNo.ToString("00");
+                    string Stage = Param.Substring(2, 1);
+                    result = "PM" + Stage;
                     break;
-                case "ARM":
-                    int ARMNo = 0;
-                    if (Param.Equals("ARM"))
-                    {
-                        ARMNo = 1;
-                    }
-                    else
-                    {
-                        ARMNo = Convert.ToInt16(Param.Replace("ARM", ""));
-                    }
-                    result = "ARM" + ARMNo.ToString("00");
-                    break;
+
             }
 
             return result;
@@ -2550,112 +3460,43 @@ namespace EFEMInterface.MessageInterface
             else
             {
                 TimeOutCmd.SetTimeOutMonitor(false);//設定Timeout監控停止
-                OnHandlingCmds.Remove(key);//從待處理名單移除
                 _EventReport.On_CommandMessage("Retry Timeout:" + TimeOutCmd.NotConfirmMsg);
+                OnHandlingCmds.TryRemove(key, out TimeOutCmd);//從待處理名單移除
+
             }
         }
 
         #region Event report from Transfer control
         //***************Event report from Transfer control*****************Begin
 
-        public void On_Command_Excuted(Node Node, Transaction Txn, SANWA.Utility.ReturnMessage Msg)
+        public void On_TaskJob_Finished(string TaskID)
         {
-            //處理邏輯結束
-            OnHandling WaitHandle;
-            if (OnHandlingCmds.TryGetValue(Txn.FormName, out WaitHandle))
+            OnHandling WaitForHandle;
+            if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
             {
-                switch (WaitHandle.Cmd.CommandType)
-                {
-                    case CommandType.GET:
-                        if (WaitHandle.Cmd.Equals("SIGSTAT"))
-                        {
-
-                        }
-                        else
-                        {
-                            SendInfo(WaitHandle, Msg.Value, "");
-                        }
-                        break;
-                    case CommandType.SET:
-                        SendInfo(WaitHandle);
-                        break;
-                }
+                SendInfo(WaitForHandle);
+            }
+            else
+            {
+                logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + TaskID);
             }
         }
 
-        public void On_Command_Error(Node Node, Transaction Txn, SANWA.Utility.ReturnMessage Msg)
+        public void On_TaskJob_Aborted(string TaskID, string Message)
         {
-            OnHandling WaitHandle;
-            if (OnHandlingCmds.TryGetValue(Txn.FormName, out WaitHandle))
+            OnHandling WaitForHandle;
+            if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
             {
-                SendABS(WaitHandle, "TBD", "TBD", Msg.Value);
+
+                SendABS(WaitForHandle, "TEST");
+            }
+            else
+            {
+                logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + TaskID + " Message:" + Message);
             }
         }
 
-        public void On_Command_Finished(Node Node, Transaction Txn, SANWA.Utility.ReturnMessage Msg)
-        {
 
-        }
-
-        public void On_Command_TimeOut(Node Node, Transaction Txn)
-        {
-
-        }
-
-        public void On_Event_Trigger(Node Node, SANWA.Utility.ReturnMessage Msg)
-        {
-
-        }
-
-        public void On_Controller_State_Changed(string Device_ID, string Status)
-        {
-
-        }
-
-        public void On_Script_Finished(Node Node, string ScriptName, string FormName)
-        {
-
-        }
-
-        public void On_Node_State_Changed(Node Node, string Status)
-        {
-
-        }
-
-        public void On_Eqp_State_Changed(string OldStatus, string NewStatus)
-        {
-
-        }
-
-        public void On_Port_Begin(string PortName, string FormName)
-        {
-
-        }
-
-        public void On_Port_Finished(string PortName, string FormName)
-        {
-
-        }
-
-        public void On_Task_Finished(string FormName, string LapsedTime, int LapsedWfCount, int LapsedLotCount)
-        {
-
-        }
-
-        public void On_Job_Location_Changed(Job Job)
-        {
-
-        }
-
-        public void On_InterLock_Report(Node Node, bool InterLock)
-        {
-
-        }
-
-        public void On_Mode_Changed(string Mode)
-        {
-
-        }
 
         //***************Event report from Transfer control*****************End
         #endregion

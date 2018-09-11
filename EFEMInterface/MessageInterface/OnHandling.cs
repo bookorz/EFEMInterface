@@ -16,6 +16,7 @@ namespace EFEMInterface.MessageInterface
         public string NotConfirmMsg { get; set; }
         public int INF_RetryCount { get; set; }
         public DateTime ReceiveTime { get; set; }
+        public bool IsReturn { get; set; }
         //逾時
         private System.Timers.Timer timeOutTimer = new System.Timers.Timer();
         IHandlingTimeOutReport _TimeOutReport;
@@ -28,6 +29,7 @@ namespace EFEMInterface.MessageInterface
             INF_RetryCount = 0;
             ID = Guid.NewGuid().ToString();
             ReceiveTime = DateTime.Now;
+            IsReturn = false;
         }
 
         public void SetTimeOutMonitor(bool Enabled)
