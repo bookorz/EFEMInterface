@@ -1169,16 +1169,47 @@ namespace EFEMInterface.MessageInterface
                             case "ERROR":
                                 try
                                 {
-                                    if (cmd.Parameter[0].Equals("CLEAR"))
+                                    for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
-                                        SendAck(WaitForHandle);
+                                        switch (i)
+                                        {
+                                            case 0:
+                                                if (cmd.Parameter[i].Equals("CLEAR"))
+                                                {
+
+                                                }
+                                                else
+                                                {
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                                break;
+                                            default:
+                                                //命令錯誤
+                                                SendNak(WaitForHandle, "Command format error.");
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                        }
+                                    }
+                                    //通過檢查
+
+                                    string ErrorMessage = "";
+                                    string TaskName = "SET_ERROR";
+                                    //Dictionary<string, string> param = new Dictionary<string, string>();
+
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                         SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
+                                        SendAck(WaitForHandle);
                                     }
                                 }
                                 catch
@@ -1193,6 +1224,9 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //int no = 0;
                                     //檢查命令格式
+                                    string TaskName = "";
+                                    string Target = "";
+                                    string Arm = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -1203,17 +1237,18 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("ARM", ""), out no) &&
                                                     cmd.Parameter[i].Replace("ARM", "").Length == 1)
                                                 {
-
+                                                    Target = "ROBOT01";
+                                                    Arm = no.ToString();
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                    int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
                                                    cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-
+                                                    Target = NodeNameConvert("ALIGN1", "ALIGNER");
                                                 }
                                                 else
                                                 {
@@ -1224,9 +1259,13 @@ namespace EFEMInterface.MessageInterface
                                                 }
                                                 break;
                                             case 1:
-                                                if ((cmd.Parameter[i].Equals("ON") || cmd.Parameter[i].Equals("OFF")))
+                                                if (cmd.Parameter[i].Equals("ON") )
                                                 {
-
+                                                    TaskName = "SET_CLAMP_ON";
+                                                }
+                                                else if (cmd.Parameter[i].Equals("OFF"))
+                                                {
+                                                    TaskName = "SET_CLAMP_OFF";
                                                 }
                                                 else
                                                 {
@@ -1246,8 +1285,23 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+                                    string ErrorMessage = "";
+                                    
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    param.Add("@Arm",Arm);
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+
+                                    if (!ErrorMessage.Equals(""))
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendAck(WaitForHandle);
+                                    }
 
                                 }
                                 catch
@@ -1798,6 +1852,7 @@ namespace EFEMInterface.MessageInterface
                                 {
 
                                     string TaskName = "";
+                                    string Target = "";
                                     //檢查命令格式
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
@@ -1805,12 +1860,12 @@ namespace EFEMInterface.MessageInterface
                                         {
                                             case 0:
                                                 //Designates aligner.
-                                                TaskName = cmd.Parameter[i];
+                                                //TaskName = cmd.Parameter[i];
                                                 if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i],"LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -1831,8 +1886,11 @@ namespace EFEMInterface.MessageInterface
                                     //通過檢查
 
                                     string ErrorMessage = "";
-                                    TaskName += "_LOCK";
-                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                    TaskName = "LOCK";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
                                     {
@@ -1859,6 +1917,7 @@ namespace EFEMInterface.MessageInterface
                                 try
                                 {
                                     string TaskName = "";
+                                    string Target = "";
                                     //檢查命令格式
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
@@ -1866,12 +1925,12 @@ namespace EFEMInterface.MessageInterface
                                         {
                                             case 0:
 
-                                                TaskName = cmd.Parameter[i];
+                                                //TaskName = cmd.Parameter[i];
                                                 if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -1892,8 +1951,10 @@ namespace EFEMInterface.MessageInterface
                                     //通過檢查
 
                                     string ErrorMessage = "";
-                                    TaskName += "_UNLOCK";
-                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                    TaskName = "UNLOCK";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
                                     {
@@ -1919,18 +1980,20 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //檢查命令格式
                                     string TaskName = "";
+                                    string Target = "";
+                                
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
                                         {
                                             case 0:
 
-                                                TaskName = cmd.Parameter[i];
+                                                //TaskName = cmd.Parameter[i];
                                                 if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -1951,8 +2014,10 @@ namespace EFEMInterface.MessageInterface
                                     //通過檢查
 
                                     string ErrorMessage = "";
-                                    TaskName += "_DOCK";
-                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                    TaskName = "DOCK";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
                                     {
@@ -1978,17 +2043,18 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //檢查命令格式
                                     string TaskName = "";
+                                    string Target = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
                                         {
                                             case 0:
-                                                TaskName = cmd.Parameter[i];
+                                                //TaskName = cmd.Parameter[i];
                                                 if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -2009,8 +2075,10 @@ namespace EFEMInterface.MessageInterface
                                     //通過檢查
 
                                     string ErrorMessage = "";
-                                    TaskName += "_UNDOCK";
-                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                    TaskName = "UNDOCK";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
                                     {
@@ -2038,6 +2106,7 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //檢查命令格式
                                     string TaskName = "";
+                                    string Target = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -2048,7 +2117,7 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -2069,8 +2138,10 @@ namespace EFEMInterface.MessageInterface
                                     //通過檢查
 
                                     string ErrorMessage = "";
-                                    TaskName += "_OPEN";
-                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                    TaskName = "OPEN";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
                                     {
@@ -2096,17 +2167,18 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //檢查命令格式
                                     string TaskName = "";
+                                    string Target = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
                                         {
                                             case 0:
-                                                TaskName = cmd.Parameter[i];
+                                                //TaskName = cmd.Parameter[i];
                                                 if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -2127,8 +2199,10 @@ namespace EFEMInterface.MessageInterface
                                     //通過檢查
 
                                     string ErrorMessage = "";
-                                    TaskName += "_CLOSE";
-                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                    TaskName = "CLOSE";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
                                     {
@@ -2153,17 +2227,18 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //檢查命令格式
                                     string TaskName = "";
+                                    string Target = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
                                         {
                                             case 0:
-                                                TaskName = cmd.Parameter[i];
+                                                //TaskName = cmd.Parameter[i];
                                                 if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -2184,8 +2259,10 @@ namespace EFEMInterface.MessageInterface
                                     //通過檢查
 
                                     string ErrorMessage = "";
-                                    TaskName += "_WAFSH";
-                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                    TaskName = "WAFSH";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
                                     {
@@ -3093,7 +3170,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
+                                   
                                     string ErrorMessage = "";
                                     string TaskName = "HOLD";
                                     //Dictionary<string, string> param = new Dictionary<string, string>();
@@ -3219,7 +3296,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
+                                   
                                     string ErrorMessage = "";
                                     string TaskName = "EMS";
                                     //Dictionary<string, string> param = new Dictionary<string, string>();
