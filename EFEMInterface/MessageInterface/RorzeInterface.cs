@@ -1,4 +1,5 @@
-﻿using EFEMInterface.Comm;
+﻿using DIOControl;
+using EFEMInterface.Comm;
 using log4net;
 using System;
 using System.Collections.Concurrent;
@@ -20,8 +21,20 @@ namespace EFEMInterface.MessageInterface
 
         IEFEMControl _EventReport;
 
-
         SocketServer Comm;
+
+        ReportEvent Events = new ReportEvent();
+        
+
+        public class ReportEvent
+        {
+            public bool MAPDT = false;
+            public bool TRANSREQ = false;
+            public bool SYSTEM = false;
+            public bool PORT = false;
+            public bool PRS = false;
+            public bool FFU = false;
+        }
 
         public RorzeInterface(IEFEMControl EventReport)
         {
@@ -29,9 +42,6 @@ namespace EFEMInterface.MessageInterface
             Comm = new SocketServer(this);
 
         }
-
-
-
 
         public class RorzeCommand
         {
@@ -62,6 +72,11 @@ namespace EFEMInterface.MessageInterface
             public const string Information = "Information";
             public const string ReInformation = "ReInformation";
             public const string Abnormal = "Abnormal";
+        }
+
+        public void Reset()
+        {
+            OnHandlingCmds.Clear();
         }
 
         private RorzeCommand CmdParser(string Msg)
@@ -401,8 +416,30 @@ namespace EFEMInterface.MessageInterface
                         break;
                     default:
                         //命令錯誤
-                        SendNak(WaitForHandle, "Command format error.");
-                        SendInfo(WaitForHandle);
+                        WaitForHandle = new OnHandling(this);
+                        WaitForHandle.Cmd = cmd;
+                        WaitForHandle.Handler = handler;
+
+                         findHandling = from Handling in OnHandlingCmds.Values.ToList()
+                                           where Handling.Cmd.Command.Equals(cmd.Command) && Handling.Cmd.CommandType.Equals(CommandType.MOV)
+
+                                           select Handling;
+                        OnHandlingCmds.TryAdd(WaitForHandle.ID, WaitForHandle);
+                        if (findHandling.Count() != 0)
+                        {
+
+                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.BUSY, "DUPLICATE", "Command already exsit.");
+                            SendInfo(WaitForHandle);
+                            
+                        }
+                        else
+                        {
+                            SendNak(WaitForHandle, "Command format error.");
+                            SendInfo(WaitForHandle);
+                        }
+
+
+
                         return;
                 }
 
@@ -419,6 +456,7 @@ namespace EFEMInterface.MessageInterface
                             case "MAPDT":
                                 //取得LoadPort Mapping 結果
                                 #region MAPDT
+                                string Target = "";
                                 try
                                 {
 
@@ -433,7 +471,7 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i],"LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -452,33 +490,20 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
+                                    string ErrorMessage = "";
+                                    string TaskName = "GET_MAPDT";
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
-                                    node = NodeManagement.Get(NodeNameConvert(cmd.Parameter[0], "LOADPORT"));
-
-                                    if (node != null)
+                                    if (!ErrorMessage.Equals(""))
                                     {
-                                        SendAck(WaitForHandle);//發送ACK給上位系統
-                                        txn = new Transaction();
-                                        txn.FormName = WaitForHandle.ID;
-                                        txn.Method = Transaction.Command.LoadPortType.GetMapping;
-                                        //node.SendCommand(txn);//下GetMapping命令給Loadport
-
-
-                                        //*********************test begin*********************
-
-                                        SANWA.Utility.ReturnMessage Msg = new SANWA.Utility.ReturnMessage();
-                                        Msg.Command = Transaction.Command.LoadPortType.GetMapping;
-                                        Msg.CommandType = "GET";
-                                        Msg.Value = "1111111111111111111111111";
-
-
-                                        //*********************test   end*********************
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        SendInfo(WaitForHandle);
                                     }
                                     else
                                     {
-                                        //回報設備不可使用
-                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Loadport not found.");
-                                        SendInfo(WaitForHandle);
+                                        SendAck(WaitForHandle);
                                     }
 
                                 }
@@ -1259,7 +1284,7 @@ namespace EFEMInterface.MessageInterface
                                                 }
                                                 break;
                                             case 1:
-                                                if (cmd.Parameter[i].Equals("ON") )
+                                                if (cmd.Parameter[i].Equals("ON"))
                                                 {
                                                     TaskName = "SET_CLAMP_ON";
                                                 }
@@ -1286,10 +1311,10 @@ namespace EFEMInterface.MessageInterface
                                     }
                                     //通過檢查
                                     string ErrorMessage = "";
-                                    
+
                                     Dictionary<string, string> param = new Dictionary<string, string>();
                                     param.Add("@Target", Target);
-                                    param.Add("@Arm",Arm);
+                                    param.Add("@Arm", Arm);
 
                                     TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
@@ -1379,7 +1404,11 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //檢查命令格式
                                     //int no = 0;
-                                    string target = "";
+                                    string TaskName = "";
+                                    string Target = "";
+                                    string type = "";
+                                    string point = "";
+                                    string state = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -1387,13 +1416,14 @@ namespace EFEMInterface.MessageInterface
                                             case 0:
                                                 if (cmd.Parameter[i].Equals("STOWER"))
                                                 {
-                                                    target = "STOWER";
+                                                    type = "STOWER";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
-                                                   cmd.Parameter[i].Replace("P", "").Length == 3)
+                                                   cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-                                                    target = "PORT";
+                                                    type = "PORT";
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -1404,7 +1434,7 @@ namespace EFEMInterface.MessageInterface
                                                 }
                                                 break;
                                             case 1:
-                                                if (target.Equals("STOWER") &&
+                                                if (type.Equals("STOWER") &&
                                                     (cmd.Parameter[i].Equals("RED") ||
                                                     cmd.Parameter[i].Equals("YELLOW") ||
                                                     cmd.Parameter[i].Equals("GREEN") ||
@@ -1412,14 +1442,14 @@ namespace EFEMInterface.MessageInterface
                                                     cmd.Parameter[i].Equals("BUZZER1") ||
                                                     cmd.Parameter[i].Equals("BUZZER2")))
                                                 {
-
+                                                    point = cmd.Parameter[i];
                                                 }
-                                                else if (target.Equals("PORT") &&
+                                                else if (type.Equals("PORT") &&
                                                    (cmd.Parameter[i].Equals("LOAD") ||
                                                    cmd.Parameter[i].Equals("UNLOAD") ||
                                                    cmd.Parameter[i].Equals("OP ACCESS")))
                                                 {
-
+                                                    point = cmd.Parameter[i];
                                                 }
                                                 else
                                                 {
@@ -1432,7 +1462,17 @@ namespace EFEMInterface.MessageInterface
                                             case 2:
                                                 if ((cmd.Parameter[i].Equals("ON") || cmd.Parameter[i].Equals("OFF") || cmd.Parameter[i].Equals("BLINK")))
                                                 {
-
+                                                    if ((point.Equals("BUZZER1") || point.Equals("BUZZER2")) && cmd.Parameter[i].Equals("BLINK"))
+                                                    {
+                                                        //命令錯誤
+                                                        SendNak(WaitForHandle, "Command format error.");
+                                                        SendInfo(WaitForHandle);
+                                                        return;
+                                                    }
+                                                    else
+                                                    {
+                                                        state = cmd.Parameter[i].Replace("ON", "TRUE").Replace("OFF", "FALSE");
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -1453,8 +1493,161 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
+                                    string ErrorMessage = "";
+
+                                    if (type.Equals("PORT"))
+                                    {
+                                        switch (point)
+                                        {
+                                            case "LOAD":
+                                                TaskName = "SET_LOAD_INDICATOR";
+                                                switch (state)
+                                                {
+                                                    case "TRUE":
+                                                        state = "1";
+                                                        break;
+                                                    case "FALSE":
+                                                        state = "0";
+                                                        break;
+                                                    case "BLINK":
+                                                        state = "2";
+                                                        break;
+                                                }
+                                                break;
+                                            case "UNLOAD":
+                                                TaskName = "SET_UNLOAD_INDICATOR";
+                                                switch (state)
+                                                {
+                                                    case "TRUE":
+                                                        state = "1";
+                                                        break;
+                                                    case "FALSE":
+                                                        state = "0";
+                                                        break;
+                                                    case "BLINK":
+                                                        state = "2";
+                                                        break;
+                                                }
+                                                break;
+                                            case "OP ACCESS":
+                                                TaskName = "SET_OPACCESS_INDICATOR";
+                                                switch (state)
+                                                {
+                                                    case "TRUE":
+                                                        state = "1";
+                                                        break;
+                                                    case "FALSE":
+                                                        state = "0";
+                                                        break;
+                                                    case "BLINK":
+                                                        state = "2";
+                                                        break;
+                                                }
+                                                break;
+                                        }
+
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", Target);
+                                        param.Add("@state", state);
+                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+
+                                        if (!ErrorMessage.Equals(""))
+                                        {
+                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                            SendInfo(WaitForHandle);
+                                        }
+                                        else
+                                        {
+                                            SendAck(WaitForHandle);
+                                        }
+                                    }
+                                    else if (type.Equals("STOWER"))
+                                    {
+                                        switch (point)
+                                        {
+                                            case "RED":
+                                                switch (state)
+                                                {
+                                                    case "TRUE":
+                                                        RouteControl.DIO.SetIO("RED", "True");
+                                                        break;
+                                                    case "FALSE":
+                                                        RouteControl.DIO.SetIO("RED", "False");
+                                                        break;
+                                                    case "BLINK":
+                                                        RouteControl.DIO.SetBlink("RED", "True");
+                                                        break;
+                                                }
+                                                break;
+                                            case "YELLOW":
+                                                switch (state)
+                                                {
+                                                    case "TRUE":
+                                                        RouteControl.DIO.SetIO("ORANGE", "True");
+                                                        break;
+                                                    case "FALSE":
+                                                        RouteControl.DIO.SetIO("ORANGE", "False");
+                                                        break;
+                                                    case "BLINK":
+                                                        RouteControl.DIO.SetBlink("ORANGE", "True");
+                                                        break;
+                                                }
+                                                break;
+                                            case "GREEN":
+                                                switch (state)
+                                                {
+                                                    case "TRUE":
+                                                        RouteControl.DIO.SetIO("GREEN", "True");
+                                                        break;
+                                                    case "FALSE":
+                                                        RouteControl.DIO.SetIO("GREEN", "False");
+                                                        break;
+                                                    case "BLINK":
+                                                        RouteControl.DIO.SetBlink("GREEN", "True");
+                                                        break;
+                                                }
+                                                break;
+                                            case "BLUE":
+                                                switch (state)
+                                                {
+                                                    case "TRUE":
+                                                        RouteControl.DIO.SetIO("BLUE", "True");
+                                                        break;
+                                                    case "FALSE":
+                                                        RouteControl.DIO.SetIO("BLUE", "False");
+                                                        break;
+                                                    case "BLINK":
+                                                        RouteControl.DIO.SetBlink("BLUE", "True");
+                                                        break;
+                                                }
+                                                break;
+                                            case "BUZZER1":
+                                                switch (state)
+                                                {
+                                                    case "TRUE":
+                                                        RouteControl.DIO.SetIO("BUZZER1", "True");
+                                                        break;
+                                                    case "FALSE":
+                                                        RouteControl.DIO.SetIO("BUZZER1", "False");
+                                                        break;
+                                                }
+                                                break;
+                                            case "BUZZER2":
+                                                switch (state)
+                                                {
+                                                    case "TRUE":
+                                                        RouteControl.DIO.SetIO("BUZZER2", "True");
+                                                        break;
+                                                    case "FALSE":
+                                                        RouteControl.DIO.SetIO("BUZZER2", "False");
+                                                        break;
+                                                }
+                                                break;
+                                        }
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    
                                 }
                                 catch
                                 {
@@ -1467,6 +1660,8 @@ namespace EFEMInterface.MessageInterface
                                 try
                                 {
                                     //檢查命令格式
+                                    string EventName = "";
+                                    string State = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -1481,7 +1676,7 @@ namespace EFEMInterface.MessageInterface
                                                     cmd.Parameter[i].Equals("PRS") ||
                                                     cmd.Parameter[i].Equals("FFU")))
                                                 {
-
+                                                    EventName = cmd.Parameter[i];
                                                 }
                                                 else
                                                 {
@@ -1496,7 +1691,7 @@ namespace EFEMInterface.MessageInterface
 
                                                 if ((cmd.Parameter[i].Equals("ON") || cmd.Parameter[i].Equals("OFF")))
                                                 {
-
+                                                    State = cmd.Parameter[i];
                                                 }
                                                 else
                                                 {
@@ -1516,46 +1711,94 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
 
-
-                                    switch (cmd.Parameter[0])
+                                    switch (EventName)
                                     {
                                         case "ALL":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle);
+                                            if (State.Equals("ON"))
+                                            {
+                                                Events.FFU = true;
+                                                Events.MAPDT = true;
+                                                Events.PORT = true;
+                                                Events.PRS = true;
+                                                Events.SYSTEM = true;
+                                                Events.TRANSREQ = true;
+                                            }
+                                            else if (State.Equals("OFF"))
+                                            {
+                                                Events.FFU = false;
+                                                Events.MAPDT = false;
+                                                Events.PORT = false;
+                                                Events.PRS = false;
+                                                Events.SYSTEM = false;
+                                                Events.TRANSREQ = false;
+                                            }
                                             break;
                                         case "MAPDT":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle);
+                                            if (State.Equals("ON"))
+                                            {
+                                                Events.MAPDT = true;
+                                            }
+                                            else if (State.Equals("OFF"))
+                                            {
+                                                Events.MAPDT = false;
+                                            }
                                             break;
                                         case "TRANSREQ":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle);
+                                            if (State.Equals("ON"))
+                                            {
+                                                Events.TRANSREQ = true;
+                                            }
+                                            else if (State.Equals("OFF"))
+                                            {
+                                                Events.TRANSREQ = false;
+                                            }
                                             break;
                                         case "SYSTEM":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle);
+                                            if (State.Equals("ON"))
+                                            {
+                                                Events.SYSTEM = true;
+                                            }
+                                            else if (State.Equals("OFF"))
+                                            {
+                                                Events.SYSTEM = false;
+                                            }
                                             break;
                                         case "PORT":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle);
+                                            if (State.Equals("ON"))
+                                            {
+                                                Events.PORT = true;
+                                            }
+                                            else if (State.Equals("OFF"))
+                                            {
+                                                Events.PORT = false;
+                                            }
                                             break;
                                         case "PRS":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle);
+                                            if (State.Equals("ON"))
+                                            {
+                                                Events.PRS = true;
+                                            }
+                                            else if (State.Equals("OFF"))
+                                            {
+                                                Events.PRS = false;
+                                            }
                                             break;
                                         case "FFU":
-                                            SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle);
+                                            if (State.Equals("ON"))
+                                            {
+                                                Events.FFU = true;
+                                            }
+                                            else if (State.Equals("OFF"))
+                                            {
+                                                Events.FFU = false;
+                                            }
                                             break;
-                                        default:
-                                            //命令錯誤
-                                            SendNak(WaitForHandle, "Command format error.");
-                                            SendInfo(WaitForHandle);
-                                            break;
+
                                     }
+
+                                    SendAck(WaitForHandle);
+                                    SendInfo(WaitForHandle);
                                 }
                                 catch
                                 {
@@ -1569,6 +1812,8 @@ namespace EFEMInterface.MessageInterface
                                 {
                                     //int no = 0;
                                     //檢查命令格式
+                                    string Target = "";
+                                    string Size = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -1580,29 +1825,29 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("ARM", ""), out no) &&
                                                     cmd.Parameter[i].Replace("ARM", "").Length == 1)
                                                 {
-
+                                                    Target = "ROBOT01";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 3)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i].Substring(0, 2), "LOADPORT");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
                                                     cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-
+                                                    Target = NodeNameConvert("ALIGN1", "ALIGNER");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("LL", ""), out no) &&
                                                     (cmd.Parameter[i].Replace("LL", "").Length == 3))
                                                 {
-
+                                                    Target = NodeNameConvert(cmd.Parameter[i].Substring(0, 2), "STAGE");
                                                 }
                                                 else
                                                 {
@@ -1617,7 +1862,7 @@ namespace EFEMInterface.MessageInterface
                                                 //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
                                                 if ((cmd.Parameter[i].Equals("200") || cmd.Parameter[i].Equals("300")))
                                                 {
-
+                                                    Size = cmd.Parameter[i];
                                                 }
                                                 else
                                                 {
@@ -1637,9 +1882,18 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle);
-
+                                    Node TargetNode = NodeManagement.Get(Target);
+                                    if (TargetNode != null)
+                                    {
+                                        TargetNode.WaferSize = Size + "MM";
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    else
+                                    {
+                                        SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", Target+" not found");
+                                        SendInfo(WaitForHandle);
+                                    }
 
 
                                 }
@@ -1671,6 +1925,7 @@ namespace EFEMInterface.MessageInterface
                                     //檢查命令格式
 
                                     string TaskName = "";
+                                    string Target = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -1680,14 +1935,15 @@ namespace EFEMInterface.MessageInterface
                                                 //If the parameter is omitted, the system acts in the same manner as when "ALL" is designated.
                                                 if (cmd.Parameter[i].Equals("ALL"))
                                                 {
-
+                                                    TaskName = "ALL";
 
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                    int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                    cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-
+                                                    TaskName = "LOADPORT";
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
 
 
                                                 }
@@ -1695,23 +1951,27 @@ namespace EFEMInterface.MessageInterface
                                                   int.TryParse(cmd.Parameter[i].Replace("ROB", ""), out no) &&
                                                    cmd.Parameter[i].Replace("ROB", "").Length == 1)
                                                 {
-
+                                                    TaskName = "ROBOT";
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "ROBOT");
 
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ROB"))
                                                 {
-                                                    TaskName = "ROB1";
+                                                    TaskName = "ROBOT";
+                                                    Target = NodeNameConvert("ROB1", "ROBOT");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
                                                    cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
                                                 {
-
+                                                    TaskName = "ALIGNER";
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
 
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
-                                                    TaskName = "ALIGN1";
+                                                    TaskName = "ALIGNER";
+                                                    Target = NodeNameConvert("ALIGN1", "ALIGNER");
                                                 }
                                                 else
                                                 {
@@ -1732,7 +1992,9 @@ namespace EFEMInterface.MessageInterface
 
                                     string ErrorMessage = "";
                                     TaskName += "_Init";
-                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                    Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Target", Target);
+                                    TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
                                     {
@@ -1764,8 +2026,8 @@ namespace EFEMInterface.MessageInterface
                                         switch (i)
                                         {
                                             case 0:
-                                                
-                                                
+
+
                                                 //If the parameter is omitted, the system acts in the same manner as when "ALL" is designated.
                                                 if (cmd.Parameter[i].Equals("ALL"))
                                                 {
@@ -1788,7 +2050,7 @@ namespace EFEMInterface.MessageInterface
                                                 else if (cmd.Parameter[i].Equals("ROB"))
                                                 {
                                                     TaskName = "ROBOT";
-                                                    Target = NodeNameConvert("ROB1", "ROBOT");                                                    
+                                                    Target = NodeNameConvert("ROB1", "ROBOT");
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
@@ -1800,7 +2062,7 @@ namespace EFEMInterface.MessageInterface
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
                                                     TaskName = "ALIGNER";
-                                                    Target = NodeNameConvert("ALIGN1", "ALIGNER");                                                    
+                                                    Target = NodeNameConvert("ALIGN1", "ALIGNER");
                                                 }
                                                 else
                                                 {
@@ -1824,7 +2086,7 @@ namespace EFEMInterface.MessageInterface
 
                                     Dictionary<string, string> param = new Dictionary<string, string>();
                                     param.Add("@Target", Target);
-                                    
+
 
                                     TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
@@ -1865,7 +2127,7 @@ namespace EFEMInterface.MessageInterface
                                                     int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
-                                                    Target = NodeNameConvert(cmd.Parameter[i],"LOADPORT");
+                                                    Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
                                                 }
                                                 else
                                                 {
@@ -1981,7 +2243,7 @@ namespace EFEMInterface.MessageInterface
                                     //檢查命令格式
                                     string TaskName = "";
                                     string Target = "";
-                                
+
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -3170,7 +3432,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                     }
                                     //通過檢查
-                                   
+
                                     string ErrorMessage = "";
                                     string TaskName = "HOLD";
                                     //Dictionary<string, string> param = new Dictionary<string, string>();
@@ -3211,7 +3473,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                     }
                                     //通過檢查
-                                  
+
                                     string ErrorMessage = "";
                                     string TaskName = "RESTR";
                                     //Dictionary<string, string> param = new Dictionary<string, string>();
@@ -3253,7 +3515,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                     }
                                     //通過檢查
-                                   
+
                                     string ErrorMessage = "";
                                     string TaskName = "ABORT";
                                     //Dictionary<string, string> param = new Dictionary<string, string>();
@@ -3296,7 +3558,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                     }
                                     //通過檢查
-                                   
+
                                     string ErrorMessage = "";
                                     string TaskName = "EMS";
                                     //Dictionary<string, string> param = new Dictionary<string, string>();
@@ -3564,8 +3826,8 @@ namespace EFEMInterface.MessageInterface
             OnHandling WaitForHandle;
             if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
             {
-
-                SendABS(WaitForHandle, "TEST");
+                
+                SendABS(WaitForHandle, Message);
             }
             else
             {

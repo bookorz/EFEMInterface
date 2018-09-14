@@ -1,5 +1,6 @@
 ﻿using EFEMInterface.MessageInterface;
 using log4net;
+using SANWA.Utility.Config;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -48,7 +49,8 @@ namespace EFEMInterface.Comm
             // The DNS name of the computer  
 
             //IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
-            IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
+            //IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
+            IPAddress ipAddress = IPAddress.Parse(SystemConfig.Get().EFEMInterfaceConn);
             IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 13000);
 
             // Create a TCP/IP socket.  

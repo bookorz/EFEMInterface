@@ -54,6 +54,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\DIOControl\DIOControl\DIOControl.csproj">
+      <Project>{21adfcfc-11c7-4982-af57-09002ed8e961}</Project>
+      <Name>DIOControl</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\SANWAFunction\SANWA\SANWA\SANWA.csproj">
       <Project>{4eed2ed4-a72e-4f24-8d80-ef2f0b24fcf1}</Project>
       <Name>SANWA</Name>
