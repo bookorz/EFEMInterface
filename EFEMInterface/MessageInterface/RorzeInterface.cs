@@ -304,21 +304,11 @@ namespace EFEMInterface.MessageInterface
             }
         }
 
-        private void SendABS(OnHandling WaitForHandle, string ErrorType)
+        private void SendABS(OnHandling WaitForHandle, string param1, string param2)
         {
             if (!WaitForHandle.IsReturn)
             {
                 WaitForHandle.IsReturn = true;
-                string param1 = "";
-                string param2 = "";
-                switch (ErrorType)
-                {
-                    default:
-                        param1 = ErrorType;
-                        param2 = "TEST";
-                        break;
-                }
-
                 string ErrorMsg = ErrorAssembler(WaitForHandle.Cmd, param1, param2);
                 WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
                 Comm.Send(WaitForHandle.Handler, ErrorMsg);
@@ -2690,6 +2680,7 @@ namespace EFEMInterface.MessageInterface
                                     string Target = "";
                                     string Position = "";
                                     string Arm = "";
+                                    string TargetCheckMethod = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -2704,6 +2695,7 @@ namespace EFEMInterface.MessageInterface
                                                     Target = cmd.Parameter[i].Substring(0, 2);
                                                     Slot = no.ToString().Substring(1);
                                                     Position = NodeNameConvert(Target, "LOADPORT");
+                                                    TargetCheckMethod = "ReadStatus";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no))
@@ -2711,12 +2703,14 @@ namespace EFEMInterface.MessageInterface
                                                     Target = cmd.Parameter[i];
                                                     Slot = "1";
                                                     Position = NodeNameConvert(Target, "ALIGNER");
+                                                    TargetCheckMethod = "GetRIO";
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
                                                     Target = "ALIGN1";
                                                     Slot = "1";
                                                     Position = NodeNameConvert(Target, "ALIGNER");
+                                                    TargetCheckMethod = "GetRIO";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
                                                     (cmd.Parameter[i].Replace("LL", "").Length == 1 ||
@@ -2732,6 +2726,7 @@ namespace EFEMInterface.MessageInterface
                                                     {
                                                         Slot = "1";
                                                     }
+                                                    TargetCheckMethod = "GetRIO";
                                                 }
                                                 else
                                                 {
@@ -2779,9 +2774,12 @@ namespace EFEMInterface.MessageInterface
                                     string ErrorMessage = "";
                                     TaskName = "LOAD";
                                     Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Self", "ROBOT01");
                                     param.Add("@Slot", Slot);
                                     param.Add("@Arm", Arm);
                                     param.Add("@Position", Position);
+                                    param.Add("@Method", TargetCheckMethod);
+
                                     TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
@@ -3827,7 +3825,7 @@ namespace EFEMInterface.MessageInterface
             if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
             {
                 
-                SendABS(WaitForHandle, Message);
+                SendABS(WaitForHandle, "TEST",Message);
             }
             else
             {
