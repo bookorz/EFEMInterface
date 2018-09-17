@@ -1,6 +1,7 @@
 ﻿using DIOControl;
 using EFEMInterface.Comm;
 using log4net;
+using SANWA.Utility;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -24,7 +25,11 @@ namespace EFEMInterface.MessageInterface
         SocketServer Comm;
 
         ReportEvent Events = new ReportEvent();
-        
+
+        AlarmMapping AlmMapping = new AlarmMapping();
+
+        AlarmMessage LastError = new AlarmMessage();
+
 
         public class ReportEvent
         {
@@ -49,6 +54,7 @@ namespace EFEMInterface.MessageInterface
             public string Command;
             public List<string> Parameter = new List<string>();
             public string CommandType = "";
+            public string Target = "";
         }
 
         public class CommandType
@@ -201,25 +207,25 @@ namespace EFEMInterface.MessageInterface
                 result = "INF:" + cmd.Command;
             }
 
-            switch (cmd.Command)
-            {
-                case "MAPDT":
-                case "TRANSREQ":
-                case "CLAMP":
-                case "STATE":
-                case "MODE":
-                case "EVENT":
-                case "CSTID":
-                case "SIZE":
-                    //result += "/" + cmd.Parameter[0] + "/" + data;
-                    result += "/" + cmd.Parameter[0];
-                    if (!data1.Equals(""))
-                    {
-                        result += "/" + data1;
-                    }
-                    break;
+            //switch (cmd.Command)
+            //{
+            //    case "MAPDT":
+            //    case "TRANSREQ":
+            //    case "CLAMP":
+            //    case "STATE":
+            //    case "MODE":
+            //    case "EVENT":
+            //    case "CSTID":
+            //    case "SIZE":
+            //        //result += "/" + cmd.Parameter[0] + "/" + data;
+            //        result += "/" + cmd.Parameter[0];
+            //        if (!data1.Equals(""))
+            //        {
+            //            result += "/" + data1;
+            //        }
+            //        break;
 
-                case "SIGSTAT":
+            //    case "SIGSTAT":
                     //result += "/" + cmd.Parameter[0] + "/" + data;
                     result += "/" + cmd.Parameter[0];
                     if (!data1.Equals(""))
@@ -230,18 +236,18 @@ namespace EFEMInterface.MessageInterface
                     {
                         result += "/" + data2;
                     }
-                    break;
-                case "ERROR":
-                    if (!data1.Equals(""))
-                    {
-                        result += "/" + data1;
-                    }
-                    if (!data2.Equals(""))
-                    {
-                        result += "/" + data2;
-                    }
-                    break;
-            }
+            //        break;
+            //    case "ERROR":
+            //        if (!data1.Equals(""))
+            //        {
+            //            result += "/" + data1;
+            //        }
+            //        if (!data2.Equals(""))
+            //        {
+            //            result += "/" + data2;
+            //        }
+            //        break;
+            //}
             result += ";\r";
             return result;
         }
@@ -435,7 +441,7 @@ namespace EFEMInterface.MessageInterface
 
                 //處理邏輯開始
                 Node node = null;
-                Transaction txn;
+               
                 switch (cmd.CommandType)
                 {
                     #region GET
@@ -462,6 +468,7 @@ namespace EFEMInterface.MessageInterface
                                                     cmd.Parameter[i].Replace("P", "").Length == 1)
                                                 {
                                                     Target = NodeNameConvert(cmd.Parameter[i],"LOADPORT");
+                                                    cmd.Target = Target;
                                                 }
                                                 else
                                                 {
@@ -484,6 +491,7 @@ namespace EFEMInterface.MessageInterface
                                     string TaskName = "GET_MAPDT";
                                     Dictionary<string, string> param = new Dictionary<string, string>();
                                     param.Add("@Target", Target);
+
                                     TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
@@ -495,7 +503,21 @@ namespace EFEMInterface.MessageInterface
                                     {
                                         SendAck(WaitForHandle);
                                     }
+                                    //Node port = NodeManagement.Get(Target);
+                                    //if (port != null)
+                                    //{
 
+                                    //    string Mapping = port.MappingResult;
+                                    //    Mapping.Replace("2","3").Replace("E", "3").Replace("W", "7").Replace("?", "9");
+
+                                    //    SendAck(WaitForHandle);
+                                    //    SendInfo(WaitForHandle, Mapping, "");
+                                    //}
+                                    //else
+                                    //{
+                                    //    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Node not found.");
+                                    //    SendInfo(WaitForHandle);
+                                    //}
                                 }
                                 catch
                                 {
@@ -523,11 +545,11 @@ namespace EFEMInterface.MessageInterface
 
                                     }
                                     //通過檢查
-                                    //*********************test begin*********************
+                                    
                                     SendAck(WaitForHandle);
-                                    SendInfo(WaitForHandle, "COMMAND", "ROBOT");
+                                    SendInfo(WaitForHandle, LastError.Code_Group, LastError.Position);
 
-                                    //*********************test   end*********************
+                                    
                                 }
                                 catch
                                 {
@@ -2810,6 +2832,7 @@ namespace EFEMInterface.MessageInterface
                                     string Target = "";
                                     string Position = "";
                                     string Arm = "";
+                                    string TargetCheckMethod = "";
                                     for (int i = 0; i < cmd.Parameter.Count; i++)
                                     {
                                         switch (i)
@@ -2824,6 +2847,7 @@ namespace EFEMInterface.MessageInterface
                                                     Target = cmd.Parameter[i].Substring(0, 2);
                                                     Slot = no.ToString().Substring(1);
                                                     Position = NodeNameConvert(Target, "LOADPORT");
+                                                    TargetCheckMethod = "ReadStatus";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                     int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no))
@@ -2831,12 +2855,14 @@ namespace EFEMInterface.MessageInterface
                                                     Target = cmd.Parameter[i];
                                                     Slot = "1";
                                                     Position = NodeNameConvert(Target, "ALIGNER");
+                                                    TargetCheckMethod = "GetRIO";
                                                 }
                                                 else if (cmd.Parameter[i].Equals("ALIGN"))
                                                 {
                                                     Target = "ALIGN1";
                                                     Slot = "1";
                                                     Position = NodeNameConvert(Target, "ALIGNER");
+                                                    TargetCheckMethod = "GetRIO";
                                                 }
                                                 else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
                                                     (cmd.Parameter[i].Replace("LL", "").Length == 1 ||
@@ -2852,6 +2878,7 @@ namespace EFEMInterface.MessageInterface
                                                     {
                                                         Slot = "1";
                                                     }
+                                                    TargetCheckMethod = "GetRIO";
                                                 }
                                                 else
                                                 {
@@ -2898,9 +2925,11 @@ namespace EFEMInterface.MessageInterface
                                     string ErrorMessage = "";
                                     TaskName = "UNLOAD";
                                     Dictionary<string, string> param = new Dictionary<string, string>();
+                                    param.Add("@Self", "ROBOT01");
                                     param.Add("@Slot", Slot);
                                     param.Add("@Arm", Arm);
                                     param.Add("@Position", Position);
+                                    param.Add("@Method", TargetCheckMethod);
                                     TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
@@ -3099,7 +3128,7 @@ namespace EFEMInterface.MessageInterface
                                     param.Add("@ToARM", ToARM);
                                     param.Add("@FromSlot", FromSlot);
                                     param.Add("@ToSlot", ToSlot);
-
+                                    param.Add("@Self", "ROBOT01");
                                     TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                     if (!ErrorMessage.Equals(""))
@@ -3809,9 +3838,29 @@ namespace EFEMInterface.MessageInterface
         public void On_TaskJob_Finished(string TaskID)
         {
             OnHandling WaitForHandle;
+            Node Target = null;
             if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
             {
-                SendInfo(WaitForHandle);
+                switch (WaitForHandle.Cmd.CommandType)
+                {
+                    case "GET":
+                        switch (WaitForHandle.Cmd.Command)
+                        {
+                            case "MAPDT":
+                                Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
+                                string Mapping = Target.MappingResult;
+                                Mapping.Replace("2", "3").Replace("E", "3").Replace("W", "7").Replace("?", "9");
+
+                                
+                                SendInfo(WaitForHandle, Mapping, "");
+                                break;
+                        }
+                        break;
+                    default:
+                        SendInfo(WaitForHandle);
+                        break;
+                }
+                
             }
             else
             {
@@ -3819,13 +3868,23 @@ namespace EFEMInterface.MessageInterface
             }
         }
 
-        public void On_TaskJob_Aborted(string TaskID, string Message)
+        public void On_TaskJob_Aborted(string TaskID, string NodeName, string Message)
         {
             OnHandling WaitForHandle;
             if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
             {
+                try
+                {
+
+                    LastError = AlmMapping.Get(NodeName, Message);           
+                    SendABS(WaitForHandle,LastError.Code_Group, LastError.Position);
+                }
+                catch (Exception e)
+                {
+                    logger.Error("(GetAlarmMessage)" + e.Message + "\n" + e.StackTrace);
+                    SendABS(WaitForHandle, "TEST", Message);
+                }
                 
-                SendABS(WaitForHandle, "TEST",Message);
             }
             else
             {
