@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 
 namespace EFEMInterface.Comm
 {
+
     // State object for reading client data asynchronously  
     public class StateObject
     {
@@ -32,6 +33,7 @@ namespace EFEMInterface.Comm
 
     public class SocketServer
     {
+        ILog logger = LogManager.GetLogger(typeof(SocketServer));
         ICommMessage _EventReport;
         // Thread signal.  
         public ManualResetEvent allDone = new ManualResetEvent(false);
@@ -129,7 +131,7 @@ namespace EFEMInterface.Comm
                     // Check for end-of-file tag. If it is not there, read   
                     // more data.  
                     content = state.sb.ToString();
-                    if (content.IndexOf("\r") > -1)
+                    if (content.IndexOf(";") > -1)
                     {
                         // All the data has been read from the   
                         // client. Display it on the console.  
@@ -157,6 +159,7 @@ namespace EFEMInterface.Comm
 
         public void Send(Socket handler, String data)
         {
+            logger.Debug("EFEM Host Send : " + data);
             // Convert the string data to byte data using ASCII encoding.  
             byte[] byteData = Encoding.ASCII.GetBytes(data);
 
