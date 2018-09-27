@@ -1,10 +1,12 @@
 ﻿using DIOControl;
 using EFEMInterface.Comm;
 using log4net;
+using Newtonsoft.Json;
 using SANWA.Utility;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -24,38 +26,76 @@ namespace EFEMInterface.MessageInterface
 
         SocketServer Comm;
 
-        ReportEvent Events = new ReportEvent();
+        public ReportEvent Events = new ReportEvent();
 
         AlarmMapping AlmMapping = new AlarmMapping();
 
-        AlarmMessage LastError = new AlarmMessage();
+        AlarmMessage LastError = null;
 
         OnHandling EventHandling = null;
+
+
 
         //For TDK Loadport
         private List<OnHandling> WaitForExcute = new List<OnHandling>();
 
-
+        private static DBUtil dBUtil = new DBUtil();
 
         string SIGSTAT_SYSTEM_Data1 = "00000000";
         string SIGSTAT_SYSTEM_Data2 = "00000000";
         string SIGSTAT_PORT_Data1 = "00000000";
         string SIGSTAT_PORT_Data2 = "00000000";
+        string EFEM_State = "Not Initialize";
 
         public class ReportEvent
         {
-            public bool MAPDT = true;
-            public bool TRANSREQ = false;
-            public bool SYSTEM = true;
-            public bool PORT = true;
-            public bool PRS = false;
-            public bool FFU = false;
+            public void Load()
+            {
+                string Sql = @"SELECT MAPDT, TRANSREQ, SYSTEM, PORT, PRS, FFU FROM config_efem_event";
+
+                DataTable dt = dBUtil.GetDataTable(Sql, null);
+                string str_json = JsonConvert.SerializeObject(dt, Formatting.Indented);
+
+                ReportEvent tmp = JsonConvert.DeserializeObject<List<ReportEvent>>(str_json)[0];
+                this.MAPDT = tmp.MAPDT;
+                this.TRANSREQ = tmp.TRANSREQ;
+                this.SYSTEM = tmp.SYSTEM;
+                this.PORT = tmp.PORT;
+                this.PRS = tmp.PRS;
+                this.FFU = tmp.FFU;
+
+                
+            }
+
+            public void Save()
+            {
+                string Sql = @"UPDATE config_efem_event
+	                            SET
+		                            MAPDT={0},
+		                            TRANSREQ={1},
+		                            SYSTEM={2},
+		                            PORT={3},
+		                            PRS={4},
+		                            FFU={5}";
+                Sql = string.Format(Sql, Convert.ToByte(this.MAPDT), Convert.ToByte(this.TRANSREQ), Convert.ToByte(this.SYSTEM), Convert.ToByte(this.PORT), Convert.ToByte(this.PRS), Convert.ToByte(this.FFU));
+                dBUtil.ExecuteNonQuery(Sql, null);
+
+
+            }
+
+            public bool MAPDT { get; set; }
+            public bool TRANSREQ { get; set; }
+            public bool SYSTEM { get; set; }
+            public bool PORT { get; set; }
+            public bool PRS { get; set; }
+            public bool FFU { get; set; }
         }
 
         public RorzeInterface(IEFEMControl EventReport)
         {
             _EventReport = EventReport;
             Comm = new SocketServer(this);
+           
 
         }
 
@@ -68,7 +108,7 @@ namespace EFEMInterface.MessageInterface
             public string CommandParam = "";
             public string Target = "";
             public string Arm = "";
-            
+
         }
 
         public class CommandType
@@ -107,9 +147,9 @@ namespace EFEMInterface.MessageInterface
 
             string[] content = Msg.Replace(";", "").Replace("\r", "").Split(':');
             each.CommandParam = content[1];
-            
 
-             content = Msg.Replace(";", "").Replace("\r", "").Split(':', '/', '>');
+
+            content = Msg.Replace(";", "").Replace("\r", "").Split(':', '/', '>');
 
             for (int i = 0; i < content.Length; i++)
             {
@@ -128,7 +168,7 @@ namespace EFEMInterface.MessageInterface
                         each.Parameter.Add(content[i]);
                         break;
                 }
-            }       
+            }
             return each;
         }
 
@@ -155,7 +195,7 @@ namespace EFEMInterface.MessageInterface
             result = CommandType + ":" + cmd.Command;
             if (cmd.Command.Equals("TRANS"))
             {
-                result += "/"+cmd.Parameter[0] + ">" + cmd.Parameter[1] + "/" + cmd.Parameter[2] + ">" + cmd.Parameter[3];
+                result += "/" + cmd.Parameter[0] + ">" + cmd.Parameter[1] + "/" + cmd.Parameter[2] + ">" + cmd.Parameter[3];
             }
             else
             {
@@ -379,6 +419,7 @@ namespace EFEMInterface.MessageInterface
 
         public void On_Connection_Connected(Socket handler)
         {
+            Events.Load();
             RorzeCommand CommunityActive = new RorzeCommand();
             CommunityActive.CommandType = CommandType.INF;
             CommunityActive.Command = "READY";
@@ -430,9 +471,39 @@ namespace EFEMInterface.MessageInterface
                         case CommandType.GET:
                         case CommandType.SET:
                         case CommandType.MOV:
+
+
                             WaitForHandle = new OnHandling(this);
                             WaitForHandle.Cmd = cmd;
                             WaitForHandle.Handler = handler;
+
+                            if (LastError != null && cmd.CommandType.Equals(CommandType.MOV))
+                            {
+                                SendCancel(WaitForHandle, "ABS", LastError.Position, "Has alarm.");
+                                SendInfo(WaitForHandle);
+                                return;
+                            }
+
+                            if (EFEM_State.Equals("Not Initialize") && cmd.CommandType.Equals(CommandType.MOV))
+                            {
+                                if (!cmd.Command.Equals("INIT"))
+                                {
+                                    SendCancel(WaitForHandle, "NOINITCMPL", "", "Not Initialize");
+                                    SendInfo(WaitForHandle);
+                                    return;
+                                }
+                            }
+                            Node rob = NodeManagement.Get("ROBOT01");
+                            if (rob.State.Equals("Not Origin") && cmd.CommandType.Equals(CommandType.MOV))
+                            {
+                                if (!cmd.Command.Equals("ORGSH")&& !cmd.Command.Equals("INIT"))
+                                {
+                                    SendCancel(WaitForHandle, "NOORGCMPL", "ROBOT", "Not Orgin");
+                                    SendInfo(WaitForHandle);
+                                    return;
+                                }
+                            }
+
                             //Node port;
 
                             //if (cmd.Command.Equals("SIGOUT"))
@@ -464,18 +535,19 @@ namespace EFEMInterface.MessageInterface
                             //    }
                             //}
 
-                            //var findx = from Handling in OnHandlingCmds.Values.ToList()
-                            //            where Handling.Cmd.Command.Equals(cmd.Command) && Handling.Cmd.CommandType.Equals(CommandType.MOV)
-
-                            //            select Handling;
+                            var findx = from Handling in OnHandlingCmds.Values.ToList()
+                                        where Handling.Cmd.Command.Equals(cmd.Command) && Handling.Cmd.CommandType.Equals(CommandType.MOV) && !Handling.Cmd.Command.Equals("OPEN") && !Handling.Cmd.Command.Equals("CLOSE") && 
+                                        !Handling.Cmd.Command.Equals("CLAMP") && !Handling.Cmd.Command.Equals("UNCLAMP") && !Handling.Cmd.Command.Equals("LOCK") && !Handling.Cmd.Command.Equals("UNLOCK") && !Handling.Cmd.Command.Equals("WAFSH")&&
+                                        !Handling.Cmd.Command.Equals("DOCK") && !Handling.Cmd.Command.Equals("UNDOCK")
+                                        select Handling;
                             OnHandlingCmds.TryAdd(WaitForHandle.ID, WaitForHandle);
-                            //if (findx.Count() != 0)
-                            //{
+                            if (findx.Count() != 0)
+                            {
 
-                            //    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.BUSY, "DUPLICATE", "Command already exsit.");
-                            //    SendInfo(WaitForHandle);
-                            //    return;
-                            //}
+                                SendCancel(WaitForHandle, ErrorCategory.CancelFactor.BUSY, "DUPLICATE", "Command already exsit.");
+                                SendInfo(WaitForHandle);
+                                return;
+                            }
 
 
                             break;
@@ -484,7 +556,7 @@ namespace EFEMInterface.MessageInterface
                             tmp.Sort((x, y) => { return x.ReceiveTime.CompareTo(y.ReceiveTime); });
 
                             var findHandling = from Handling in tmp
-                                               where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) !=-1
+                                               where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) != -1
                                                select Handling;
 
 
@@ -581,6 +653,101 @@ namespace EFEMInterface.MessageInterface
                         case CommandType.GET:
                             switch (cmd.Command.ToUpper())
                             {
+                                case "STATUS":
+                                    //int no = 0;
+                                    //初始化
+                                    try
+                                    {
+                                        //檢查命令格式
+
+                                        TaskName = "";
+                                        Target = "";
+                                        for (int i = 0; i < cmd.Parameter.Count; i++)
+                                        {
+                                            switch (i)
+                                            {
+                                                case 0:
+                                                    TaskName = cmd.Parameter[i];
+                                                    //If the parameter is omitted, the system acts in the same manner as when "ALL" is designated.
+                                                    if (cmd.Parameter[i].Equals("ALL"))
+                                                    {
+                                                        TaskName = "ALL";
+
+                                                    }
+                                                    else if (cmd.Parameter[i].IndexOf("P") != -1 &&
+                                                       int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                       cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                    {
+                                                        TaskName = "LOADPORT";
+                                                        Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
+
+
+                                                    }
+                                                    else if (cmd.Parameter[i].IndexOf("ROB") != -1 &&
+                                                      int.TryParse(cmd.Parameter[i].Replace("ROB", ""), out no) &&
+                                                       cmd.Parameter[i].Replace("ROB", "").Length == 1)
+                                                    {
+                                                        TaskName = "ROBOT";
+                                                        Target = NodeNameConvert(cmd.Parameter[i], "ROBOT");
+
+                                                    }
+                                                    else if (cmd.Parameter[i].Equals("ROB"))
+                                                    {
+                                                        TaskName = "ROBOT";
+                                                        Target = NodeNameConvert("ROB1", "ROBOT");
+                                                    }
+                                                    else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
+                                                        int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
+                                                       cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
+                                                    {
+                                                        TaskName = "ALIGNER";
+                                                        Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
+
+                                                    }
+                                                    else if (cmd.Parameter[i].Equals("ALIGN"))
+                                                    {
+                                                        TaskName = "ALIGNER";
+                                                        Target = NodeNameConvert("ALIGN1", "ALIGNER");
+                                                    }
+                                                    else
+                                                    {
+                                                        //命令錯誤
+                                                        SendNak(WaitForHandle, "Command format error.");
+                                                        SendInfo(WaitForHandle);
+                                                        return;
+                                                    }
+                                                    break;
+                                                default:
+                                                    //命令錯誤
+                                                    SendNak(WaitForHandle, "Command format error.");
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                            }
+                                        }
+                                        //通過檢查
+                                        string Result = "";
+                                        if (TaskName.Equals("ALL"))
+                                        {
+                                            Result = EFEM_State;
+                                        }
+                                        else
+                                        {
+                                            Node t = NodeManagement.Get(Target);
+                                            Result = t.State;
+                                        }
+
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle,Result,"");
+                                       
+                                        
+                                    }
+                                    catch
+                                    {
+                                        //命令錯誤
+                                        SendNak(WaitForHandle, "Command format error.");
+                                        SendInfo(WaitForHandle);
+                                    }
+                                    break;
                                 case "MAPDT":
                                     //取得LoadPort Mapping 結果
                                     #region MAPDT
@@ -771,7 +938,7 @@ namespace EFEMInterface.MessageInterface
                                                     else if (cmd.Parameter[i].Equals("TRACK"))
                                                     {
                                                         Node robot = NodeManagement.Get("ROBOT01");
-                                                     
+
                                                         returnValue = robot.R_Hold_Status + robot.L_Hold_Status;
                                                     }
                                                     else if (cmd.Parameter[i].IndexOf("PRS") != -1 &&
@@ -994,6 +1161,7 @@ namespace EFEMInterface.MessageInterface
                                     try
                                     {
                                         //檢查命令格式
+                                        string result = "OFF";
                                         for (int i = 0; i < cmd.Parameter.Count; i++)
                                         {
                                             switch (i)
@@ -1002,27 +1170,45 @@ namespace EFEMInterface.MessageInterface
                                                     //Designates aligner.
                                                     if (cmd.Parameter[i].Equals("MAPDT"))
                                                     {
-
+                                                        if (Events.MAPDT)
+                                                        {
+                                                            result = "ON";
+                                                        }
                                                     }
                                                     else if (cmd.Parameter[i].Equals("TRANSREQ"))
                                                     {
-
+                                                        if (Events.TRANSREQ)
+                                                        {
+                                                            result = "ON";
+                                                        }
                                                     }
                                                     else if (cmd.Parameter[i].Equals("SYSTEM"))
                                                     {
-
+                                                        if (Events.SYSTEM)
+                                                        {
+                                                            result = "ON";
+                                                        }
                                                     }
                                                     else if (cmd.Parameter[i].Equals("PORT"))
                                                     {
-
+                                                        if (Events.PORT)
+                                                        {
+                                                            result = "ON";
+                                                        }
                                                     }
                                                     else if (cmd.Parameter[i].Equals("PRS"))
                                                     {
-
+                                                        if (Events.PRS)
+                                                        {
+                                                            result = "ON";
+                                                        }
                                                     }
                                                     else if (cmd.Parameter[i].Equals("FFU"))
                                                     {
-
+                                                        if (Events.FFU)
+                                                        {
+                                                            result = "ON";
+                                                        }
                                                     }
                                                     else
                                                     {
@@ -1042,7 +1228,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         //通過檢查
                                         SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "OFF", "");
+                                        SendInfo(WaitForHandle, result, "");
 
                                     }
                                     catch
@@ -2077,7 +2263,7 @@ namespace EFEMInterface.MessageInterface
                                                 break;
 
                                         }
-
+                                        Events.Save();
                                         SendAck(WaitForHandle);
                                         SendInfo(WaitForHandle);
                                     }
@@ -2217,7 +2403,7 @@ namespace EFEMInterface.MessageInterface
                                                     if (cmd.Parameter[i].Equals("ALL"))
                                                     {
                                                         TaskName = "ALL";
-
+                                                        Target = "ALL";
                                                     }
                                                     else if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                        int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
@@ -2275,6 +2461,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName += "_Init";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
+                                        WaitForHandle.Cmd.Target = Target;
                                         TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
@@ -2313,6 +2500,7 @@ namespace EFEMInterface.MessageInterface
                                                     if (cmd.Parameter[i].Equals("ALL"))
                                                     {
                                                         TaskName = cmd.Parameter[i];
+                                                        Target = "ALL";
                                                     }
                                                     else if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                        int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
@@ -2367,7 +2555,7 @@ namespace EFEMInterface.MessageInterface
 
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-
+                                        WaitForHandle.Cmd.Target = Target;
 
                                         TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
@@ -2994,6 +3182,7 @@ namespace EFEMInterface.MessageInterface
                                         string Position = "";
                                         string Arm = "";
                                         string TargetCheckMethod = "";
+
                                         for (int i = 0; i < cmd.Parameter.Count; i++)
                                         {
                                             switch (i)
@@ -3105,6 +3294,45 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查
+                                        Node n = NodeManagement.Get(Position);
+
+                                        if (n.Type.ToUpper().Equals("LOADPORT"))
+                                        {
+                                            //檢查Slot是否安全
+                                            if (!n.IsMapping)
+                                            {
+                                                SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                            }
+                                            else
+                                            {
+                                                int slotNo = 0;
+                                                if (int.TryParse(Slot, out slotNo))
+                                                {
+                                                    Job SlotData = null;
+                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
+                                                    if (SlotData.MapFlag && !SlotData.ErrPosition)
+                                                    {
+
+                                                    }
+                                                    else
+                                                    {
+                                                        SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
+                                                        SendInfo(WaitForHandle);
+                                                        return;
+                                                    }
+
+                                                }
+                                                else
+                                                {
+                                                    SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                            }
+
+                                        }
 
                                         ErrorMessage = "";
                                         TaskName = "LOAD";
@@ -3126,7 +3354,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         else
                                         {
-                                            SendAck(WaitForHandle);
+                                            //SendAck(WaitForHandle);
                                         }
                                     }
                                     catch
@@ -3252,7 +3480,45 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查
+                                        Node n = NodeManagement.Get(Position);
 
+                                        if (n.Type.ToUpper().Equals("LOADPORT"))
+                                        {
+                                            //檢查Slot是否安全
+                                            if (n.MappingResult.Equals(""))
+                                            {
+                                                SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                            }
+                                            else
+                                            {
+                                                int slotNo = 0;
+                                                if (int.TryParse(Slot, out slotNo))
+                                                {
+                                                    Job SlotData = null;
+                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
+                                                    if (!SlotData.MapFlag)
+                                                    {
+
+                                                    }
+                                                    else
+                                                    {
+                                                        SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
+                                                        SendInfo(WaitForHandle);
+                                                        return;
+                                                    }
+
+                                                }
+                                                else
+                                                {
+                                                    SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                            }
+
+                                        }
                                         ErrorMessage = "";
                                         TaskName = "UNLOAD";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
@@ -3270,7 +3536,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         else
                                         {
-                                            SendAck(WaitForHandle);
+                                            //SendAck(WaitForHandle);
                                         }
                                     }
                                     catch
@@ -3483,6 +3749,83 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查  FromTarget + FromARM + ToTarget + ToARM +
+                                        Node n = NodeManagement.Get(FromTarget);
+
+                                        if (n.Type.ToUpper().Equals("LOADPORT"))
+                                        {
+                                            //檢查Slot是否安全
+                                            if (n.MappingResult.Equals(""))
+                                            {
+                                                SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                            }
+                                            else
+                                            {
+                                                int slotNo = 0;
+                                                if (int.TryParse(FromSlot, out slotNo))
+                                                {
+                                                    Job SlotData = null;
+                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
+                                                    if (SlotData.MapFlag && !SlotData.ErrPosition)
+                                                    {
+
+                                                    }
+                                                    else
+                                                    {
+                                                        SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
+                                                        SendInfo(WaitForHandle);
+                                                        return;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                            }
+
+                                        }
+
+                                        n = NodeManagement.Get(ToTarget);
+
+                                        if (n.Type.ToUpper().Equals("LOADPORT"))
+                                        {
+                                            //檢查Slot是否安全
+                                            if (n.MappingResult.Equals(""))
+                                            {
+                                                SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
+                                                SendInfo(WaitForHandle);
+                                                return;
+                                            }
+                                            else
+                                            {
+                                                int slotNo = 0;
+                                                if (int.TryParse(ToSlot, out slotNo))
+                                                {
+                                                    Job SlotData = null;
+                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
+                                                    if (!SlotData.MapFlag)
+                                                    {
+
+                                                    }
+                                                    else
+                                                    {
+                                                        SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
+                                                        SendInfo(WaitForHandle);
+                                                        return;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
+                                                    SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                            }
+
+                                        }
 
                                         ErrorMessage = "";
                                         TaskName = "TRANS";
@@ -3503,7 +3846,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         else
                                         {
-                                            SendAck(WaitForHandle);
+                                            //SendAck(WaitForHandle);
                                         }
                                     }
                                     catch
@@ -3632,7 +3975,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         else
                                         {
-                                            SendAck(WaitForHandle);
+                                            //SendAck(WaitForHandle);
                                         }
                                     }
                                     catch
@@ -4218,6 +4561,16 @@ namespace EFEMInterface.MessageInterface
         #region Event report from Transfer control
         //***************Event report from Transfer control*****************Begin
 
+        public void On_TaskJob_Ack(string TaskID)
+        {
+            OnHandling WaitForHandle;
+
+            if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
+            {
+                SendAck(WaitForHandle);
+            }
+        }
+
         public void On_TaskJob_Finished(string TaskID)
         {
             OnHandling WaitForHandle;
@@ -4227,6 +4580,24 @@ namespace EFEMInterface.MessageInterface
             {
                 switch (WaitForHandle.Cmd.CommandType)
                 {
+                    case "MOV":
+                        switch (WaitForHandle.Cmd.Command)
+                        {
+                            case "INIT":
+                                if (WaitForHandle.Cmd.Target.Equals("ALL"))
+                                {
+                                    EFEM_State = NodeManagement.Get("ROBOT01").State;
+                                }
+                                break;
+                            case "ORGSH":
+                                if (WaitForHandle.Cmd.Target.Equals("ALL")|| WaitForHandle.Cmd.Target.IndexOf("ROBOT")!=-1)
+                                {
+                                    EFEM_State = "Ready";
+                                }
+                                break;
+                        }
+                        SendInfo(WaitForHandle);
+                        break;
                     case "GET":
                         switch (WaitForHandle.Cmd.Command)
                         {
@@ -4297,17 +4668,34 @@ namespace EFEMInterface.MessageInterface
             }
         }
 
-        public void On_TaskJob_Aborted(string TaskID, string NodeName, string Message)
+        public void On_TaskJob_Aborted(string TaskID, string NodeName, string ReportType, string Message)
         {
             OnHandling WaitForHandle;
             if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
             {
                 try
                 {
+                    AlarmMessage alm = AlmMapping.Get(NodeName, Message);
 
-                    LastError = AlmMapping.Get(NodeName, Message);
-                    SendABS(WaitForHandle, LastError.Code_Group, LastError.Position);
 
+                    if (ReportType.Equals("ABS"))
+                    {
+                        LastError = alm;
+                        if (LastError.Position.Equals(""))
+                        {
+                            if (NodeName.ToUpper().IndexOf("LOADPORT") != -1)
+                            {
+                                alm.Position = "P" + NodeName.Replace("LOADPORT0", "");
+                            }
+
+                        }
+                        SendABS(WaitForHandle, LastError.Code_Group, LastError.Position);
+                    }
+                    else if (ReportType.Equals("CAN"))
+                    {
+                        SendCancel(WaitForHandle, alm.Code_Group, alm.Position, "");
+                        SendInfo(WaitForHandle);
+                    }
 
                 }
                 catch (Exception e)
@@ -4677,24 +5065,7 @@ namespace EFEMInterface.MessageInterface
 
         public string BinaryStringToHexString(string binary)
         {
-            //StringBuilder result = new StringBuilder(binary.Length / 8 + 1);
 
-            //// TODO: check all 1's or 0's... Will throw otherwise
-
-            //int mod4Len = binary.Length % 8;
-            //if (mod4Len != 0)
-            //{
-            //    // pad to length multiple of 8
-            //    binary = binary.PadLeft(((binary.Length / 8) + 1) * 8, '0');
-            //}
-
-            //for (int i = 0; i < binary.Length; i += 8)
-            //{
-            //    string eightBits = binary.Substring(i, 8);
-            //    result.AppendFormat("{0:X2}", Convert.ToByte(eightBits, 2));
-            //}
-
-            //return result.ToString();
             string result = "EEEEEEEE";
             try
             {
