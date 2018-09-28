@@ -345,6 +345,7 @@ namespace EFEMInterface.MessageInterface
                 _EventReport.On_CommandMessage("Err :" + detail);
                 _EventReport.On_CommandMessage("Send:" + CancelMsg);
             }
+            OnHandlingCmds.TryRemove(WaitForHandle.ID,out WaitForHandle);
         }
 
         private void SendInfo(OnHandling WaitForHandle)
@@ -480,7 +481,7 @@ namespace EFEMInterface.MessageInterface
                             if (LastError != null && cmd.CommandType.Equals(CommandType.MOV))
                             {
                                 SendCancel(WaitForHandle, "ABS", LastError.Position, "Has alarm.");
-                                SendInfo(WaitForHandle);
+                                //SendInfo(WaitForHandle);
                                 return;
                             }
 
@@ -489,7 +490,7 @@ namespace EFEMInterface.MessageInterface
                                 if (!cmd.Command.Equals("INIT"))
                                 {
                                     SendCancel(WaitForHandle, "NOINITCMPL", "", "Not Initialize");
-                                    SendInfo(WaitForHandle);
+                                   // SendInfo(WaitForHandle);
                                     return;
                                 }
                             }
@@ -499,7 +500,7 @@ namespace EFEMInterface.MessageInterface
                                 if (!cmd.Command.Equals("ORGSH")&& !cmd.Command.Equals("INIT"))
                                 {
                                     SendCancel(WaitForHandle, "NOORGCMPL", "ROBOT", "Not Orgin");
-                                    SendInfo(WaitForHandle);
+                                   // SendInfo(WaitForHandle);
                                     return;
                                 }
                             }
@@ -535,19 +536,19 @@ namespace EFEMInterface.MessageInterface
                             //    }
                             //}
 
-                            var findx = from Handling in OnHandlingCmds.Values.ToList()
-                                        where Handling.Cmd.Command.Equals(cmd.Command) && Handling.Cmd.CommandType.Equals(CommandType.MOV) && !Handling.Cmd.Command.Equals("OPEN") && !Handling.Cmd.Command.Equals("CLOSE") && 
-                                        !Handling.Cmd.Command.Equals("CLAMP") && !Handling.Cmd.Command.Equals("UNCLAMP") && !Handling.Cmd.Command.Equals("LOCK") && !Handling.Cmd.Command.Equals("UNLOCK") && !Handling.Cmd.Command.Equals("WAFSH")&&
-                                        !Handling.Cmd.Command.Equals("DOCK") && !Handling.Cmd.Command.Equals("UNDOCK")
-                                        select Handling;
+                            //var findx = from Handling in OnHandlingCmds.Values.ToList()
+                            //            where Handling.Cmd.Command.Equals(cmd.Command) && Handling.Cmd.CommandType.Equals(CommandType.MOV) && !Handling.Cmd.Command.Equals("OPEN") && !Handling.Cmd.Command.Equals("CLOSE") && 
+                            //            !Handling.Cmd.Command.Equals("CLAMP") && !Handling.Cmd.Command.Equals("UNCLAMP") && !Handling.Cmd.Command.Equals("LOCK") && !Handling.Cmd.Command.Equals("UNLOCK") && !Handling.Cmd.Command.Equals("WAFSH")&&
+                            //            !Handling.Cmd.Command.Equals("DOCK") && !Handling.Cmd.Command.Equals("UNDOCK")
+                            //            select Handling;
                             OnHandlingCmds.TryAdd(WaitForHandle.ID, WaitForHandle);
-                            if (findx.Count() != 0)
-                            {
+                            //if (findx.Count() != 0)
+                            //{
 
-                                SendCancel(WaitForHandle, ErrorCategory.CancelFactor.BUSY, "DUPLICATE", "Command already exsit.");
-                                SendInfo(WaitForHandle);
-                                return;
-                            }
+                            //    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.BUSY, "DUPLICATE", "Command already exsit.");
+                            //    SendInfo(WaitForHandle);
+                            //    return;
+                            //}
 
 
                             break;
@@ -627,7 +628,7 @@ namespace EFEMInterface.MessageInterface
                             {
 
                                 SendCancel(WaitForHandle, ErrorCategory.CancelFactor.BUSY, "DUPLICATE", "Command already exsit.");
-                                SendInfo(WaitForHandle);
+                                //SendInfo(WaitForHandle);
 
                             }
                             else
@@ -796,7 +797,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -902,7 +903,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -1131,7 +1132,7 @@ namespace EFEMInterface.MessageInterface
                                             if (port == null)
                                             {
                                                 SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Node not found.");
-                                                SendInfo(WaitForHandle);
+                                               // SendInfo(WaitForHandle);
                                             }
                                             else
                                             {
@@ -1468,7 +1469,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -1592,20 +1593,20 @@ namespace EFEMInterface.MessageInterface
                                                         else
                                                         {
                                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "ptDest not found.");
-                                                            SendInfo(WaitForHandle);
+                                                          //  SendInfo(WaitForHandle);
                                                         }
 
                                                     }
                                                     else
                                                     {
                                                         SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "ptAligner not found.");
-                                                        SendInfo(WaitForHandle);
+                                                      //  SendInfo(WaitForHandle);
                                                     }
                                                 }
                                                 else
                                                 {
                                                     SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "NextRobot not found.");
-                                                    SendInfo(WaitForHandle);
+                                                   // SendInfo(WaitForHandle);
                                                 }
                                             }
                                             else if (cmd.Parameter[1].IndexOf("D") != -1)//指定角度
@@ -1628,7 +1629,7 @@ namespace EFEMInterface.MessageInterface
                                             else
                                             {
                                                 SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "NextRobot not found.");
-                                                SendInfo(WaitForHandle);
+                                               // SendInfo(WaitForHandle);
                                             }
                                         }
                                         else
@@ -1636,7 +1637,7 @@ namespace EFEMInterface.MessageInterface
                                             //回報設備不可使用
 
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Aligner not found.");
-                                            SendInfo(WaitForHandle);
+                                          //  SendInfo(WaitForHandle);
                                         }
 
                                     }
@@ -1686,7 +1687,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                          //  SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -1778,7 +1779,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2016,7 +2017,7 @@ namespace EFEMInterface.MessageInterface
                                             if (!ErrorMessage.Equals(""))
                                             {
                                                 SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                                SendInfo(WaitForHandle);
+                                               // SendInfo(WaitForHandle);
                                             }
                                             else
                                             {
@@ -2359,7 +2360,7 @@ namespace EFEMInterface.MessageInterface
                                         else
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", Target + " not found");
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
 
 
@@ -2467,7 +2468,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2562,7 +2563,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2626,7 +2627,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2693,7 +2694,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2759,7 +2760,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2820,7 +2821,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                          //  SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2883,7 +2884,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2944,7 +2945,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3004,7 +3005,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3155,7 +3156,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                            //SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3302,7 +3303,7 @@ namespace EFEMInterface.MessageInterface
                                             if (!n.IsMapping)
                                             {
                                                 SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                                SendInfo(WaitForHandle);
+                                               // SendInfo(WaitForHandle);
                                                 return;
                                             }
                                             else
@@ -3319,7 +3320,7 @@ namespace EFEMInterface.MessageInterface
                                                     else
                                                     {
                                                         SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                                        SendInfo(WaitForHandle);
+                                                       // SendInfo(WaitForHandle);
                                                         return;
                                                     }
 
@@ -3327,7 +3328,7 @@ namespace EFEMInterface.MessageInterface
                                                 else
                                                 {
                                                     SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                                    SendInfo(WaitForHandle);
+                                                   // SendInfo(WaitForHandle);
                                                     return;
                                                 }
                                             }
@@ -3350,7 +3351,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3488,7 +3489,7 @@ namespace EFEMInterface.MessageInterface
                                             if (n.MappingResult.Equals(""))
                                             {
                                                 SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                SendInfo(WaitForHandle);
+                                              //  SendInfo(WaitForHandle);
                                                 return;
                                             }
                                             else
@@ -3505,7 +3506,7 @@ namespace EFEMInterface.MessageInterface
                                                     else
                                                     {
                                                         SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                        SendInfo(WaitForHandle);
+                                                       // SendInfo(WaitForHandle);
                                                         return;
                                                     }
 
@@ -3513,7 +3514,7 @@ namespace EFEMInterface.MessageInterface
                                                 else
                                                 {
                                                     SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                    SendInfo(WaitForHandle);
+                                                  //  SendInfo(WaitForHandle);
                                                     return;
                                                 }
                                             }
@@ -3532,7 +3533,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3757,7 +3758,7 @@ namespace EFEMInterface.MessageInterface
                                             if (n.MappingResult.Equals(""))
                                             {
                                                 SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                SendInfo(WaitForHandle);
+                                               // SendInfo(WaitForHandle);
                                                 return;
                                             }
                                             else
@@ -3774,14 +3775,14 @@ namespace EFEMInterface.MessageInterface
                                                     else
                                                     {
                                                         SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                        SendInfo(WaitForHandle);
+                                                       // SendInfo(WaitForHandle);
                                                         return;
                                                     }
                                                 }
                                                 else
                                                 {
                                                     SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                    SendInfo(WaitForHandle);
+                                                   // SendInfo(WaitForHandle);
                                                     return;
                                                 }
                                             }
@@ -3796,7 +3797,7 @@ namespace EFEMInterface.MessageInterface
                                             if (n.MappingResult.Equals(""))
                                             {
                                                 SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                SendInfo(WaitForHandle);
+                                               // SendInfo(WaitForHandle);
                                                 return;
                                             }
                                             else
@@ -3813,14 +3814,14 @@ namespace EFEMInterface.MessageInterface
                                                     else
                                                     {
                                                         SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                        SendInfo(WaitForHandle);
+                                                       // SendInfo(WaitForHandle);
                                                         return;
                                                     }
                                                 }
                                                 else
                                                 {
                                                     SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                    SendInfo(WaitForHandle);
+                                                   // SendInfo(WaitForHandle);
                                                     return;
                                                 }
                                             }
@@ -3842,7 +3843,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3971,7 +3972,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4055,7 +4056,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                            //SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4153,7 +4154,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4188,14 +4189,19 @@ namespace EFEMInterface.MessageInterface
                                         ErrorMessage = "";
                                         TaskName = "HOLD";
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
-
+                                        if (!NodeManagement.Get("ROBOT01").IsExcuting)
+                                        {
+                                            SendCancel(WaitForHandle, "NOTINMOTION", "ROBOT", ErrorMessage);
+                                           // SendInfo(WaitForHandle);
+                                            return;
+                                        }
 
                                         TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4236,7 +4242,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                            //SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4278,7 +4284,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4321,7 +4327,7 @@ namespace EFEMInterface.MessageInterface
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            SendInfo(WaitForHandle);
+                                           // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4680,6 +4686,16 @@ namespace EFEMInterface.MessageInterface
 
                     if (ReportType.Equals("ABS"))
                     {
+                        //var findx = from Handling in OnHandlingCmds.Values.ToList()
+                        //            where Handling.Cmd.Command.Equals("ABORT") && Handling.Cmd.CommandType.Equals(CommandType.MOV)
+                        //            select Handling;
+                        //if (findx.Count() != 0 && Message.Equals("84805000"))
+                        //{
+
+                        //    OnHandlingCmds.TryRemove(WaitForHandle.ID,out WaitForHandle);
+                        //    return;
+                        //}
+
                         LastError = alm;
                         if (LastError.Position.Equals(""))
                         {
@@ -4694,7 +4710,7 @@ namespace EFEMInterface.MessageInterface
                     else if (ReportType.Equals("CAN"))
                     {
                         SendCancel(WaitForHandle, alm.Code_Group, alm.Position, "");
-                        SendInfo(WaitForHandle);
+                       // SendInfo(WaitForHandle);
                     }
 
                 }
