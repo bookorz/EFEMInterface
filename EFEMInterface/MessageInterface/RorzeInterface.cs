@@ -34,7 +34,7 @@ namespace EFEMInterface.MessageInterface
 
         OnHandling EventHandling = null;
 
-
+        public bool SaftyCheckByPass = true;
 
         //For TDK Loadport
         private List<OnHandling> WaitForExcute = new List<OnHandling>();
@@ -485,25 +485,25 @@ namespace EFEMInterface.MessageInterface
                                 return;
                             }
 
-                            if (EFEM_State.Equals("Not Initialize") && cmd.CommandType.Equals(CommandType.MOV))
-                            {
-                                if (!cmd.Command.Equals("INIT"))
-                                {
-                                    SendCancel(WaitForHandle, "NOINITCMPL", "", "Not Initialize");
-                                   // SendInfo(WaitForHandle);
-                                    return;
-                                }
-                            }
-                            Node rob = NodeManagement.Get("ROBOT01");
-                            if (rob.State.Equals("Not Origin") && cmd.CommandType.Equals(CommandType.MOV))
-                            {
-                                if (!cmd.Command.Equals("ORGSH")&& !cmd.Command.Equals("INIT"))
-                                {
-                                    SendCancel(WaitForHandle, "NOORGCMPL", "ROBOT", "Not Orgin");
-                                   // SendInfo(WaitForHandle);
-                                    return;
-                                }
-                            }
+                            //if (EFEM_State.Equals("Not Initialize") && cmd.CommandType.Equals(CommandType.MOV))
+                            //{
+                            //    if (!cmd.Command.Equals("INIT"))
+                            //    {
+                            //        SendCancel(WaitForHandle, "NOINITCMPL", "", "Not Initialize");
+                            //       // SendInfo(WaitForHandle);
+                            //        return;
+                            //    }
+                            //}
+                            //Node rob = NodeManagement.Get("ROBOT01");
+                            //if (rob.State.Equals("Not Origin") && cmd.CommandType.Equals(CommandType.MOV))
+                            //{
+                            //    if (!cmd.Command.Equals("ORGSH")&& !cmd.Command.Equals("INIT"))
+                            //    {
+                            //        SendCancel(WaitForHandle, "NOORGCMPL", "ROBOT", "Not Orgin");
+                            //       // SendInfo(WaitForHandle);
+                            //        return;
+                            //    }
+                            //}
 
                             //Node port;
 
@@ -896,7 +896,7 @@ namespace EFEMInterface.MessageInterface
                                         ErrorMessage = "";
                                         TaskName = "GET_CLAMP";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
-                                        param.Add("@Self", cmd.Target);
+                                        param.Add("@Target", cmd.Target);
 
                                         TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
@@ -946,13 +946,15 @@ namespace EFEMInterface.MessageInterface
                                                         int.TryParse(cmd.Parameter[i].Replace("PRS", ""), out no) &&
                                                         cmd.Parameter[i].Replace("PRS", "").Length == 1)
                                                     {
-                                                        returnValue = "SNO1|00000000,SNO2|00003000,SNO3|00009527,SNO4|88888888";
+                                                        //returnValue = "SNO1|00000000,SNO2|00003000,SNO3|00009527,SNO4|88888888";
+                                                        returnValue = "N/A";
                                                     }
                                                     else if (cmd.Parameter[i].IndexOf("FFU") != -1 &&
                                                         int.TryParse(cmd.Parameter[i].Replace("FFU", ""), out no) &&
                                                         cmd.Parameter[i].Replace("FFU", "").Length == 1)
                                                     {
-                                                        returnValue = "FNO1|00000000,FNO2|00003000,FNO3|00009527,FNO4|88888888";
+                                                        //returnValue = "FNO1|00000000,FNO2|00003000,FNO3|00009527,FNO4|88888888";
+                                                        returnValue = "N/A";
                                                     }
                                                     else
                                                     {
@@ -1255,10 +1257,11 @@ namespace EFEMInterface.MessageInterface
                                                 case 0:
                                                     //Designates aligner.
                                                     if (cmd.Parameter[i].IndexOf("P") != -1 &&
-                                                        int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
-                                                        cmd.Parameter[i].Replace("P", "").Length == 1)
+                                                       int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
+                                                       cmd.Parameter[i].Replace("P", "").Length == 1)
                                                     {
-
+                                                        TaskName = "READ_LCD";
+                                                        Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT").Replace("LOADPORT","SMARTTAG");
                                                     }
                                                     else
                                                     {
@@ -1277,8 +1280,22 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "FOUPIDXX", "");
+                                        //SendAck(WaitForHandle);
+                                        //SendInfo(WaitForHandle, "FOUPIDXX", "");
+                                        Dictionary<string, string> Param = new Dictionary<string, string>();
+                                        Param.Add("@Target", Target);                                      
+                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, Param);
+
+                                        if (!ErrorMessage.Equals(""))
+                                        {
+                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                            // SendInfo(WaitForHandle);
+                                        }
+                                        else
+                                        {
+                                            SendAck(WaitForHandle);
+                                            LastError = null;
+                                        }
                                     }
                                     catch
                                     {
@@ -1366,7 +1383,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         //通過檢查
                                         SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, "300", "");
+                                        SendInfo(WaitForHandle, "200", "");
 
                                     }
                                     catch
@@ -1973,7 +1990,6 @@ namespace EFEMInterface.MessageInterface
                                                             state = "2";
                                                             break;
                                                     }
-
                                                     break;
                                                 case "UNLOAD":
                                                     TaskName = "SET_UNLOAD_INDICATOR";
@@ -2024,7 +2040,7 @@ namespace EFEMInterface.MessageInterface
                                                 SendAck(WaitForHandle);
 
                                             }
-
+                                           
                                         }
                                         else if (type.Equals("STOWER"))
                                         {
@@ -3228,7 +3244,23 @@ namespace EFEMInterface.MessageInterface
                                                             Slot = no.ToString();
                                                         }
 
-                                                        Position = "ALIGNER02";
+                                                        Position = "LOADLOCK01";
+                                                        TargetCheckMethod = "ReadStatus";
+                                                    }
+                                                    else if (cmd.Parameter[i].IndexOf("BF2") != -1)
+                                                    {
+                                                        //Target = cmd.Parameter[i].Substring(0, 2);
+
+                                                        if (!int.TryParse(cmd.Parameter[i].Replace("BF2", ""), out no))
+                                                        {
+                                                            Slot = "1";
+                                                        }
+                                                        else
+                                                        {
+                                                            Slot = no.ToString();
+                                                        }
+
+                                                        Position = "LOADLOCK02";
                                                         TargetCheckMethod = "ReadStatus";
                                                     }
                                                     //else if (cmd.Parameter[i].Equals("LLA"))
@@ -3297,7 +3329,7 @@ namespace EFEMInterface.MessageInterface
                                         //通過檢查
                                         Node n = NodeManagement.Get(Position);
 
-                                        if (n.Type.ToUpper().Equals("LOADPORT"))
+                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
                                         {
                                             //檢查Slot是否安全
                                             if (!n.IsMapping)
@@ -3338,7 +3370,7 @@ namespace EFEMInterface.MessageInterface
                                         ErrorMessage = "";
                                         TaskName = "LOAD";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
-                                        param.Add("@Self", "ROBOT01");
+                                        param.Add("@Target", "ROBOT01");
                                         param.Add("@Slot", Slot);
                                         param.Add("@Arm", Arm);
                                         param.Add("@Position", Position);
@@ -3411,7 +3443,7 @@ namespace EFEMInterface.MessageInterface
                                                     else if (cmd.Parameter[i].IndexOf("BF1") != -1)
                                                     {
                                                         //Target = cmd.Parameter[i].Substring(0, 2);
-                                                        //int.TryParse(cmd.Parameter[i].Replace("BF01", ""), out no);
+
                                                         if (!int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no))
                                                         {
                                                             Slot = "1";
@@ -3421,7 +3453,23 @@ namespace EFEMInterface.MessageInterface
                                                             Slot = no.ToString();
                                                         }
 
-                                                        Position = "ALIGNER02";
+                                                        Position = "LOADLOCK01";
+                                                        TargetCheckMethod = "ReadStatus";
+                                                    }
+                                                    else if (cmd.Parameter[i].IndexOf("BF2") != -1)
+                                                    {
+                                                        //Target = cmd.Parameter[i].Substring(0, 2);
+
+                                                        if (!int.TryParse(cmd.Parameter[i].Replace("BF2", ""), out no))
+                                                        {
+                                                            Slot = "1";
+                                                        }
+                                                        else
+                                                        {
+                                                            Slot = no.ToString();
+                                                        }
+
+                                                        Position = "LOADLOCK02";
                                                         TargetCheckMethod = "ReadStatus";
                                                     }
                                                     //else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
@@ -3483,7 +3531,7 @@ namespace EFEMInterface.MessageInterface
                                         //通過檢查
                                         Node n = NodeManagement.Get(Position);
 
-                                        if (n.Type.ToUpper().Equals("LOADPORT"))
+                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
                                         {
                                             //檢查Slot是否安全
                                             if (n.MappingResult.Equals(""))
@@ -3523,7 +3571,7 @@ namespace EFEMInterface.MessageInterface
                                         ErrorMessage = "";
                                         TaskName = "UNLOAD";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
-                                        param.Add("@Self", "ROBOT01");
+                                        param.Add("@Target", "ROBOT01");
                                         param.Add("@Slot", Slot);
                                         param.Add("@Arm", Arm);
                                         param.Add("@Position", Position);
@@ -3615,7 +3663,7 @@ namespace EFEMInterface.MessageInterface
 
                                                         if (i == 0)
                                                         {
-                                                            FromTarget = "ALIGNER02";
+                                                            FromTarget = "LOADLOCK01";
                                                             //int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no);
                                                             if (!int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no))
                                                             {
@@ -3630,9 +3678,43 @@ namespace EFEMInterface.MessageInterface
                                                         }
                                                         else if (i == 3)
                                                         {
-                                                            ToTarget = "ALIGNER02";
+                                                            ToTarget = "LOADLOCK01";
                                                             //int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no);
                                                             if (!int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no))
+                                                            {
+                                                                ToSlot = "1";
+                                                            }
+                                                            else
+                                                            {
+                                                                ToSlot = no.ToString();
+                                                            }
+                                                            ToSlot = "1";
+                                                        }
+
+                                                    }
+                                                    else if (cmd.Parameter[i].IndexOf("BF2") != -1)
+                                                    {
+
+                                                        if (i == 0)
+                                                        {
+                                                            FromTarget = "LOADLOCK02";
+                                                            //int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no);
+                                                            if (!int.TryParse(cmd.Parameter[i].Replace("BF2", ""), out no))
+                                                            {
+                                                                FromSlot = "1";
+                                                            }
+                                                            else
+                                                            {
+                                                                FromSlot = no.ToString();
+                                                            }
+
+
+                                                        }
+                                                        else if (i == 3)
+                                                        {
+                                                            ToTarget = "LOADLOCK02";
+                                                            //int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no);
+                                                            if (!int.TryParse(cmd.Parameter[i].Replace("BF2", ""), out no))
                                                             {
                                                                 ToSlot = "1";
                                                             }
@@ -3752,7 +3834,7 @@ namespace EFEMInterface.MessageInterface
                                         //通過檢查  FromTarget + FromARM + ToTarget + ToARM +
                                         Node n = NodeManagement.Get(FromTarget);
 
-                                        if (n.Type.ToUpper().Equals("LOADPORT"))
+                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
                                         {
                                             //檢查Slot是否安全
                                             if (n.MappingResult.Equals(""))
@@ -3791,7 +3873,7 @@ namespace EFEMInterface.MessageInterface
 
                                         n = NodeManagement.Get(ToTarget);
 
-                                        if (n.Type.ToUpper().Equals("LOADPORT"))
+                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
                                         {
                                             //檢查Slot是否安全
                                             if (n.MappingResult.Equals(""))
@@ -3831,13 +3913,13 @@ namespace EFEMInterface.MessageInterface
                                         ErrorMessage = "";
                                         TaskName = "TRANS";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
-                                        param.Add("@FromTarget", FromTarget);
-                                        param.Add("@ToTarget", ToTarget);
+                                        param.Add("@FromPosition", FromTarget);
+                                        param.Add("@ToPosition", ToTarget);
                                         param.Add("@FromARM", FromARM);
                                         param.Add("@ToARM", ToARM);
                                         param.Add("@FromSlot", FromSlot);
                                         param.Add("@ToSlot", ToSlot);
-                                        param.Add("@Self", "ROBOT01");
+                                        param.Add("@Target", "ROBOT01");
                                         TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
@@ -4621,7 +4703,7 @@ namespace EFEMInterface.MessageInterface
                                 switch (WaitForHandle.Cmd.Arm)
                                 {
                                     case "1":
-                                        if (Target.R_Hold_Status.Equals("1"))
+                                        if (Target.IsRArmClamp)
                                         {
                                             Data1 = "ON";
                                         }
@@ -4631,7 +4713,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         break;
                                     case "2":
-                                        if (Target.L_Hold_Status.Equals("1"))
+                                        if (Target.IsLArmClamp)
                                         {
                                             Data1 = "ON";
                                         }
@@ -4643,7 +4725,11 @@ namespace EFEMInterface.MessageInterface
                                 }
                                 SendInfo(WaitForHandle, Data1, "");
                                 break;
+                            case "CSTID":
+                                Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
 
+                                SendInfo(WaitForHandle, Target.FoupID, "");
+                                break;
                         }
                         break;
                     case "SET":
@@ -4726,7 +4812,7 @@ namespace EFEMInterface.MessageInterface
                 logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + TaskID + " Message:" + Message);
             }
         }
-
+        
         public void On_Event_Trigger(string Type, string Source, string Name, string Value)
         {
             try
