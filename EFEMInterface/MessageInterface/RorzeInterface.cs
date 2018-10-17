@@ -93,6 +93,7 @@ namespace EFEMInterface.MessageInterface
 
         public RorzeInterface(IEFEMControl EventReport)
         {
+            SaftyCheckByPass = SANWA.Utility.Config.SystemConfig.Get().SaftyCheckByPass;
             _EventReport = EventReport;
             Comm = new SocketServer(this);
            
@@ -3327,48 +3328,52 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查
-                                        Node n = NodeManagement.Get(Position);
+                                        //Node n = NodeManagement.Get(Position);
 
-                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
-                                        {
-                                            //檢查Slot是否安全
-                                            if (!n.IsMapping)
-                                            {
-                                                SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                               // SendInfo(WaitForHandle);
-                                                return;
-                                            }
-                                            else
-                                            {
-                                                int slotNo = 0;
-                                                if (int.TryParse(Slot, out slotNo))
-                                                {
-                                                    Job SlotData = null;
-                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
-                                                    if (SlotData.MapFlag && !SlotData.ErrPosition)
-                                                    {
+                                        //if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
+                                        //{
+                                        //    //檢查Slot是否安全
+                                        //    if (!n.IsMapping)
+                                        //    {
+                                        //        SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
+                                        //       // SendInfo(WaitForHandle);
+                                        //        return;
+                                        //    }
+                                        //    else
+                                        //    {
+                                        //        int slotNo = 0;
+                                        //        if (int.TryParse(Slot, out slotNo))
+                                        //        {
+                                        //            Job SlotData = null;
+                                        //            n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
+                                        //            if (SlotData.MapFlag && !SlotData.ErrPosition)
+                                        //            {
 
-                                                    }
-                                                    else
-                                                    {
-                                                        SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                                       // SendInfo(WaitForHandle);
-                                                        return;
-                                                    }
+                                        //            }
+                                        //            else
+                                        //            {
+                                        //                SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
+                                        //               // SendInfo(WaitForHandle);
+                                        //                return;
+                                        //            }
 
-                                                }
-                                                else
-                                                {
-                                                    SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                                   // SendInfo(WaitForHandle);
-                                                    return;
-                                                }
-                                            }
+                                        //        }
+                                        //        else
+                                        //        {
+                                        //            SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
+                                        //           // SendInfo(WaitForHandle);
+                                        //            return;
+                                        //        }
+                                        //    }
 
-                                        }
+                                        //}
 
                                         ErrorMessage = "";
                                         TaskName = "LOAD";
+                                        if (!SaftyCheckByPass)
+                                        {
+                                            TaskName += "_SafetyCheck";
+                                        }
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
                                         param.Add("@Slot", Slot);
@@ -3570,6 +3575,10 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         ErrorMessage = "";
                                         TaskName = "UNLOAD";
+                                        if (!SaftyCheckByPass)
+                                        {
+                                            TaskName += "_SafetyCheck";
+                                        }
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
                                         param.Add("@Slot", Slot);
@@ -3912,6 +3921,10 @@ namespace EFEMInterface.MessageInterface
 
                                         ErrorMessage = "";
                                         TaskName = "TRANS";
+                                        if (!SaftyCheckByPass)
+                                        {
+                                            TaskName += "_SafetyCheck";
+                                        }
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@FromPosition", FromTarget);
                                         param.Add("@ToPosition", ToTarget);
@@ -4703,7 +4716,7 @@ namespace EFEMInterface.MessageInterface
                                 switch (WaitForHandle.Cmd.Arm)
                                 {
                                     case "1":
-                                        if (Target.IsRArmClamp)
+                                        if (Target.RArmClamp&& Target.RArmUnClamp)
                                         {
                                             Data1 = "ON";
                                         }
@@ -4713,7 +4726,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         break;
                                     case "2":
-                                        if (Target.IsLArmClamp)
+                                        if (Target.LArmClamp && Target.LArmUnClamp)
                                         {
                                             Data1 = "ON";
                                         }
