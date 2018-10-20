@@ -3074,7 +3074,7 @@ namespace EFEMInterface.MessageInterface
                                                     {
                                                         Target = "ALIGN1";
                                                         Position = NodeNameConvert(Target, "ALIGNER");
-                                                    }
+                                                    }                                                    
                                                     else if (cmd.Parameter[i].IndexOf("BF1") != -1)
                                                     {
                                                         //Target = cmd.Parameter[i].Substring(0, 2);
@@ -3088,7 +3088,23 @@ namespace EFEMInterface.MessageInterface
                                                             Slot = no.ToString();
                                                         }
 
-                                                        Position = "ALIGNER02";
+                                                        Position = "BF1";
+                                                        //TargetCheckMethod = "ReadStatus";
+                                                    }
+                                                    else if (cmd.Parameter[i].IndexOf("BF2") != -1)
+                                                    {
+                                                        //Target = cmd.Parameter[i].Substring(0, 2);
+
+                                                        if (!int.TryParse(cmd.Parameter[i].Replace("BF2", ""), out no))
+                                                        {
+                                                            Slot = "1";
+                                                        }
+                                                        else
+                                                        {
+                                                            Slot = no.ToString();
+                                                        }
+
+                                                        Position = "BF2";
                                                         //TargetCheckMethod = "ReadStatus";
                                                     }
                                                     //else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
@@ -3245,7 +3261,7 @@ namespace EFEMInterface.MessageInterface
                                                             Slot = no.ToString();
                                                         }
 
-                                                        Position = "LOADLOCK01";
+                                                        Position = "BF1";
                                                         TargetCheckMethod = "ReadStatus";
                                                     }
                                                     else if (cmd.Parameter[i].IndexOf("BF2") != -1)
@@ -3261,7 +3277,7 @@ namespace EFEMInterface.MessageInterface
                                                             Slot = no.ToString();
                                                         }
 
-                                                        Position = "LOADLOCK02";
+                                                        Position = "BF2";
                                                         TargetCheckMethod = "ReadStatus";
                                                     }
                                                     //else if (cmd.Parameter[i].Equals("LLA"))
@@ -3328,51 +3344,51 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查
-                                        //Node n = NodeManagement.Get(Position);
+                                        Node n = NodeManagement.Get(Position);
 
-                                        //if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
-                                        //{
-                                        //    //檢查Slot是否安全
-                                        //    if (!n.IsMapping)
-                                        //    {
-                                        //        SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                        //       // SendInfo(WaitForHandle);
-                                        //        return;
-                                        //    }
-                                        //    else
-                                        //    {
-                                        //        int slotNo = 0;
-                                        //        if (int.TryParse(Slot, out slotNo))
-                                        //        {
-                                        //            Job SlotData = null;
-                                        //            n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
-                                        //            if (SlotData.MapFlag && !SlotData.ErrPosition)
-                                        //            {
+                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
+                                        {
+                                            //檢查Slot是否安全
+                                            if (!n.IsMapping)
+                                            {
+                                                SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
+                                                // SendInfo(WaitForHandle);
+                                                return;
+                                            }
+                                            else
+                                            {
+                                                int slotNo = 0;
+                                                if (int.TryParse(Slot, out slotNo))
+                                                {
+                                                    Job SlotData = null;
+                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
+                                                    if (SlotData.MapFlag && !SlotData.ErrPosition)
+                                                    {
 
-                                        //            }
-                                        //            else
-                                        //            {
-                                        //                SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                        //               // SendInfo(WaitForHandle);
-                                        //                return;
-                                        //            }
+                                                    }
+                                                    else
+                                                    {
+                                                        SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
+                                                        // SendInfo(WaitForHandle);
+                                                        return;
+                                                    }
 
-                                        //        }
-                                        //        else
-                                        //        {
-                                        //            SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                        //           // SendInfo(WaitForHandle);
-                                        //            return;
-                                        //        }
-                                        //    }
+                                                }
+                                                else
+                                                {
+                                                    SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
+                                                    // SendInfo(WaitForHandle);
+                                                    return;
+                                                }
+                                            }
 
-                                        //}
+                                        }
 
                                         ErrorMessage = "";
                                         TaskName = "LOAD";
                                         if (!SaftyCheckByPass)
                                         {
-                                            TaskName += "_SafetyCheck";
+                                            TaskName += "_SaftyCheck";
                                         }
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
@@ -3458,7 +3474,7 @@ namespace EFEMInterface.MessageInterface
                                                             Slot = no.ToString();
                                                         }
 
-                                                        Position = "LOADLOCK01";
+                                                        Position = "BF1";
                                                         TargetCheckMethod = "ReadStatus";
                                                     }
                                                     else if (cmd.Parameter[i].IndexOf("BF2") != -1)
@@ -3474,7 +3490,7 @@ namespace EFEMInterface.MessageInterface
                                                             Slot = no.ToString();
                                                         }
 
-                                                        Position = "LOADLOCK02";
+                                                        Position = "BF2";
                                                         TargetCheckMethod = "ReadStatus";
                                                     }
                                                     //else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
@@ -3577,7 +3593,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "UNLOAD";
                                         if (!SaftyCheckByPass)
                                         {
-                                            TaskName += "_SafetyCheck";
+                                            TaskName += "_SaftyCheck";
                                         }
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
@@ -3672,7 +3688,7 @@ namespace EFEMInterface.MessageInterface
 
                                                         if (i == 0)
                                                         {
-                                                            FromTarget = "LOADLOCK01";
+                                                            FromTarget = "BF1";
                                                             //int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no);
                                                             if (!int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no))
                                                             {
@@ -3687,7 +3703,7 @@ namespace EFEMInterface.MessageInterface
                                                         }
                                                         else if (i == 3)
                                                         {
-                                                            ToTarget = "LOADLOCK01";
+                                                            ToTarget = "BF1";
                                                             //int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no);
                                                             if (!int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no))
                                                             {
@@ -3706,7 +3722,7 @@ namespace EFEMInterface.MessageInterface
 
                                                         if (i == 0)
                                                         {
-                                                            FromTarget = "LOADLOCK02";
+                                                            FromTarget = "BF2";
                                                             //int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no);
                                                             if (!int.TryParse(cmd.Parameter[i].Replace("BF2", ""), out no))
                                                             {
@@ -3721,7 +3737,7 @@ namespace EFEMInterface.MessageInterface
                                                         }
                                                         else if (i == 3)
                                                         {
-                                                            ToTarget = "LOADLOCK02";
+                                                            ToTarget = "BF2";
                                                             //int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no);
                                                             if (!int.TryParse(cmd.Parameter[i].Replace("BF2", ""), out no))
                                                             {
@@ -3923,7 +3939,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "TRANS";
                                         if (!SaftyCheckByPass)
                                         {
-                                            TaskName += "_SafetyCheck";
+                                            TaskName += "_SaftyCheck";
                                         }
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@FromPosition", FromTarget);
@@ -3953,135 +3969,135 @@ namespace EFEMInterface.MessageInterface
                                     }
 
                                     break;
-                                case "CHANGE":
-                                    //A wafer is exchanged at designated position.
-                                    try
-                                    {
-                                        //int no = 0;
-                                        //檢查命令格式
-                                        TaskName = "";
-                                        Target = "";
-                                        string TargetSlot = "";
-                                        string CarryOutARM = "";
-                                        string CarryInARM = "";
-                                        for (int i = 0; i < cmd.Parameter.Count; i++)
-                                        {
-                                            switch (i)
-                                            {
-                                                case 0:
-                                                    //Designates a destination to exchange a wafer
-                                                    if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
-                                                        int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
-                                                        cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
-                                                    {
-                                                        Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
-                                                        TargetSlot = "1";
-                                                    }
-                                                    else if (cmd.Parameter[i].Equals("ALIGN"))
-                                                    {
-                                                        Target = NodeNameConvert("ALIGN1", "ALIGNER");
-                                                        TargetSlot = "1";
-                                                    }
-                                                    else if (cmd.Parameter[i].IndexOf("BF1") != -1)
-                                                    {
-                                                        //Target = cmd.Parameter[i].Substring(0, 2);
-                                                        //int.TryParse(cmd.Parameter[i].Replace("BF01", ""), out no);
-                                                        if (!int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no))
-                                                        {
-                                                            TargetSlot = "1";
-                                                        }
-                                                        else
-                                                        {
-                                                            TargetSlot = no.ToString();
-                                                        }
+                                //case "CHANGE":
+                                //    //A wafer is exchanged at designated position.
+                                //    try
+                                //    {
+                                //        //int no = 0;
+                                //        //檢查命令格式
+                                //        TaskName = "";
+                                //        Target = "";
+                                //        string TargetSlot = "";
+                                //        string CarryOutARM = "";
+                                //        string CarryInARM = "";
+                                //        for (int i = 0; i < cmd.Parameter.Count; i++)
+                                //        {
+                                //            switch (i)
+                                //            {
+                                //                case 0:
+                                //                    //Designates a destination to exchange a wafer
+                                //                    if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
+                                //                        int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
+                                //                        cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
+                                //                    {
+                                //                        Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
+                                //                        TargetSlot = "1";
+                                //                    }
+                                //                    else if (cmd.Parameter[i].Equals("ALIGN"))
+                                //                    {
+                                //                        Target = NodeNameConvert("ALIGN1", "ALIGNER");
+                                //                        TargetSlot = "1";
+                                //                    }
+                                //                    else if (cmd.Parameter[i].IndexOf("BF1") != -1)
+                                //                    {
+                                //                        //Target = cmd.Parameter[i].Substring(0, 2);
+                                //                        //int.TryParse(cmd.Parameter[i].Replace("BF01", ""), out no);
+                                //                        if (!int.TryParse(cmd.Parameter[i].Replace("BF1", ""), out no))
+                                //                        {
+                                //                            TargetSlot = "1";
+                                //                        }
+                                //                        else
+                                //                        {
+                                //                            TargetSlot = no.ToString();
+                                //                        }
 
-                                                        Target = "ALIGNER02";
-                                                        //TargetCheckMethod = "ReadStatus";
-                                                    }
-                                                    else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
-                                                        (cmd.Parameter[i].Replace("LL", "").Length == 1 ||
-                                                        (cmd.Parameter[i].Replace("LL", "").Length == 3 && int.TryParse(cmd.Parameter[i].Substring(3), out no))))
-                                                    {
-                                                        if (cmd.Parameter[i].Replace("LL", "").Length == 3)
-                                                        {
-                                                            Target = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
-                                                            TargetSlot = no.ToString();
-                                                        }
-                                                        else
-                                                        {
-                                                            Target = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
-                                                            TargetSlot = "1";
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        //命令錯誤
-                                                        SendNak(WaitForHandle, "Command format error.");
-                                                        SendInfo(WaitForHandle);
-                                                        return;
-                                                    }
-                                                    break;
-                                                case 1:
-                                                case 2:
-                                                    //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
-                                                    if ((cmd.Parameter[i].Equals("ARM1") || cmd.Parameter[i].Equals("ARM2")))
-                                                    {
-                                                        if (i == 1)
-                                                        {
-                                                            CarryOutARM = cmd.Parameter[i].Replace("ARM", "");
-                                                        }
-                                                        else if (i == 2)
-                                                        {
-                                                            CarryInARM = cmd.Parameter[i].Replace("ARM", "");
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        //命令錯誤
-                                                        SendNak(WaitForHandle, "Command format error.");
-                                                        SendInfo(WaitForHandle);
-                                                        return;
-                                                    }
-                                                    break;
-                                                default:
-                                                    //命令錯誤
-                                                    SendNak(WaitForHandle, "Command format error.");
-                                                    SendInfo(WaitForHandle);
-                                                    return;
-                                            }
+                                //                        Target = "ALIGNER02";
+                                //                        //TargetCheckMethod = "ReadStatus";
+                                //                    }
+                                //                    else if (cmd.Parameter[i].IndexOf("LL") != -1 &&
+                                //                        (cmd.Parameter[i].Replace("LL", "").Length == 1 ||
+                                //                        (cmd.Parameter[i].Replace("LL", "").Length == 3 && int.TryParse(cmd.Parameter[i].Substring(3), out no))))
+                                //                    {
+                                //                        if (cmd.Parameter[i].Replace("LL", "").Length == 3)
+                                //                        {
+                                //                            Target = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
+                                //                            TargetSlot = no.ToString();
+                                //                        }
+                                //                        else
+                                //                        {
+                                //                            Target = NodeNameConvert(cmd.Parameter[i].Substring(0, 3), "STAGE");
+                                //                            TargetSlot = "1";
+                                //                        }
+                                //                    }
+                                //                    else
+                                //                    {
+                                //                        //命令錯誤
+                                //                        SendNak(WaitForHandle, "Command format error.");
+                                //                        SendInfo(WaitForHandle);
+                                //                        return;
+                                //                    }
+                                //                    break;
+                                //                case 1:
+                                //                case 2:
+                                //                    //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
+                                //                    if ((cmd.Parameter[i].Equals("ARM1") || cmd.Parameter[i].Equals("ARM2")))
+                                //                    {
+                                //                        if (i == 1)
+                                //                        {
+                                //                            CarryOutARM = cmd.Parameter[i].Replace("ARM", "");
+                                //                        }
+                                //                        else if (i == 2)
+                                //                        {
+                                //                            CarryInARM = cmd.Parameter[i].Replace("ARM", "");
+                                //                        }
+                                //                    }
+                                //                    else
+                                //                    {
+                                //                        //命令錯誤
+                                //                        SendNak(WaitForHandle, "Command format error.");
+                                //                        SendInfo(WaitForHandle);
+                                //                        return;
+                                //                    }
+                                //                    break;
+                                //                default:
+                                //                    //命令錯誤
+                                //                    SendNak(WaitForHandle, "Command format error.");
+                                //                    SendInfo(WaitForHandle);
+                                //                    return;
+                                //            }
 
-                                        }
-                                        //通過檢查
+                                //        }
+                                //        //通過檢查
 
-                                        ErrorMessage = "";
-                                        TaskName = "CHANGE";
-                                        Dictionary<string, string> param = new Dictionary<string, string>();
-                                        param.Add("@Self", "ROBOT01");
-                                        param.Add("@Position", Target);
-                                        param.Add("@Slot", TargetSlot);
-                                        param.Add("@CarryOutARM", CarryOutARM);
-                                        param.Add("@CarryInARM", CarryInARM);
+                                //        ErrorMessage = "";
+                                //        TaskName = "CHANGE";
+                                //        Dictionary<string, string> param = new Dictionary<string, string>();
+                                //        param.Add("@Self", "ROBOT01");
+                                //        param.Add("@Position", Target);
+                                //        param.Add("@Slot", TargetSlot);
+                                //        param.Add("@CarryOutARM", CarryOutARM);
+                                //        param.Add("@CarryInARM", CarryInARM);
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                //        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
-                                        if (!ErrorMessage.Equals(""))
-                                        {
-                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
-                                        }
-                                        else
-                                        {
-                                            //SendAck(WaitForHandle);
-                                        }
-                                    }
-                                    catch
-                                    {
-                                        //命令錯誤
-                                        SendNak(WaitForHandle, "Command format error.");
-                                        SendInfo(WaitForHandle);
-                                    }
+                                //        if (!ErrorMessage.Equals(""))
+                                //        {
+                                //            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                //           // SendInfo(WaitForHandle);
+                                //        }
+                                //        else
+                                //        {
+                                //            //SendAck(WaitForHandle);
+                                //        }
+                                //    }
+                                //    catch
+                                //    {
+                                //        //命令錯誤
+                                //        SendNak(WaitForHandle, "Command format error.");
+                                //        SendInfo(WaitForHandle);
+                                //    }
 
-                                    break;
+                                //    break;
                                 case "ALIGN":
                                     try
                                     {
