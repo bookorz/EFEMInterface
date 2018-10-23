@@ -2768,21 +2768,25 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         //通過檢查
 
-                                        ErrorMessage = "";
-                                        TaskName = "DOCK";
-                                        Dictionary<string, string> param = new Dictionary<string, string>();
-                                        param.Add("@Target", Target);
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        //ErrorMessage = "";
+                                        //TaskName = "DOCK";
+                                        //Dictionary<string, string> param = new Dictionary<string, string>();
+                                        //param.Add("@Target", Target);
+                                        //TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
-                                        if (!ErrorMessage.Equals(""))
-                                        {
-                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
-                                        }
-                                        else
-                                        {
-                                            SendAck(WaitForHandle);
-                                        }
+                                        //if (!ErrorMessage.Equals(""))
+                                        //{
+                                        //    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        //   // SendInfo(WaitForHandle);
+                                        //}
+                                        //else
+                                        //{
+                                        //    SendAck(WaitForHandle);
+                                        //}
+
+                                        //Bypass
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
                                     }
                                     catch
                                     {
@@ -2829,21 +2833,26 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         //通過檢查
 
-                                        ErrorMessage = "";
-                                        TaskName = "UNDOCK";
-                                        Dictionary<string, string> param = new Dictionary<string, string>();
-                                        param.Add("@Target", Target);
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        //ErrorMessage = "";
+                                        //TaskName = "UNDOCK";
+                                        //Dictionary<string, string> param = new Dictionary<string, string>();
+                                        //param.Add("@Target", Target);
+                                        //TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
-                                        if (!ErrorMessage.Equals(""))
-                                        {
-                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                          //  SendInfo(WaitForHandle);
-                                        }
-                                        else
-                                        {
-                                            SendAck(WaitForHandle);
-                                        }
+                                        //if (!ErrorMessage.Equals(""))
+                                        //{
+                                        //    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        //  //  SendInfo(WaitForHandle);
+                                        //}
+                                        //else
+                                        //{
+                                        //    SendAck(WaitForHandle);
+                                        //}
+
+
+                                        //Bypass
+                                        SendAck(WaitForHandle);
+                                        SendInfo(WaitForHandle);
                                     }
                                     catch
                                     {
@@ -3139,10 +3148,10 @@ namespace EFEMInterface.MessageInterface
                                                     {
                                                         Arm = "1";
                                                     }
-                                                    else if (cmd.Parameter[i].Equals("ARM2"))
-                                                    {
-                                                        Arm = "2";
-                                                    }
+                                                    //else if (cmd.Parameter[i].Equals("ARM2"))
+                                                    //{
+                                                    //    Arm = "2";
+                                                    //}
                                                     else
                                                     {
                                                         //命令錯誤
@@ -3318,14 +3327,14 @@ namespace EFEMInterface.MessageInterface
                                                     {
                                                         Arm = "1";
                                                     }
-                                                    else if (cmd.Parameter[i].Equals("ARM2"))
-                                                    {
-                                                        Arm = "2";
-                                                    }
-                                                    else if (cmd.Parameter[i].Equals("ARM3"))
-                                                    {
-                                                        Arm = "3";
-                                                    }
+                                                    //else if (cmd.Parameter[i].Equals("ARM2"))
+                                                    //{
+                                                    //    Arm = "2";
+                                                    //}
+                                                    //else if (cmd.Parameter[i].Equals("ARM3"))
+                                                    //{
+                                                    //    Arm = "3";
+                                                    //}
                                                     else
                                                     {
                                                         //命令錯誤
@@ -3344,45 +3353,7 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查
-                                        Node n = NodeManagement.Get(Position);
-
-                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
-                                        {
-                                            //檢查Slot是否安全
-                                            if (!n.IsMapping)
-                                            {
-                                                SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                                // SendInfo(WaitForHandle);
-                                                return;
-                                            }
-                                            else
-                                            {
-                                                int slotNo = 0;
-                                                if (int.TryParse(Slot, out slotNo))
-                                                {
-                                                    Job SlotData = null;
-                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
-                                                    if (SlotData.MapFlag && !SlotData.ErrPosition)
-                                                    {
-
-                                                    }
-                                                    else
-                                                    {
-                                                        SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                                        // SendInfo(WaitForHandle);
-                                                        return;
-                                                    }
-
-                                                }
-                                                else
-                                                {
-                                                    SendCancel(WaitForHandle, "SAFTY", "ARM1", ErrorMessage);
-                                                    // SendInfo(WaitForHandle);
-                                                    return;
-                                                }
-                                            }
-
-                                        }
+                                        
 
                                         ErrorMessage = "";
                                         TaskName = "LOAD";
@@ -3524,14 +3495,14 @@ namespace EFEMInterface.MessageInterface
                                                     {
                                                         Arm = "1";
                                                     }
-                                                    else if (cmd.Parameter[i].Equals("ARM2"))
-                                                    {
-                                                        Arm = "2";
-                                                    }
-                                                    else if (cmd.Parameter[i].Equals("ARM3"))
-                                                    {
-                                                        Arm = "3";
-                                                    }
+                                                    //else if (cmd.Parameter[i].Equals("ARM2"))
+                                                    //{
+                                                    //    Arm = "2";
+                                                    //}
+                                                    //else if (cmd.Parameter[i].Equals("ARM3"))
+                                                    //{
+                                                    //    Arm = "3";
+                                                    //}
                                                     else
                                                     {
                                                         //命令錯誤
@@ -3550,45 +3521,7 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查
-                                        Node n = NodeManagement.Get(Position);
-
-                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
-                                        {
-                                            //檢查Slot是否安全
-                                            if (n.MappingResult.Equals(""))
-                                            {
-                                                SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                              //  SendInfo(WaitForHandle);
-                                                return;
-                                            }
-                                            else
-                                            {
-                                                int slotNo = 0;
-                                                if (int.TryParse(Slot, out slotNo))
-                                                {
-                                                    Job SlotData = null;
-                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
-                                                    if (!SlotData.MapFlag)
-                                                    {
-
-                                                    }
-                                                    else
-                                                    {
-                                                        SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                       // SendInfo(WaitForHandle);
-                                                        return;
-                                                    }
-
-                                                }
-                                                else
-                                                {
-                                                    SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                  //  SendInfo(WaitForHandle);
-                                                    return;
-                                                }
-                                            }
-
-                                        }
+                                        
                                         ErrorMessage = "";
                                         TaskName = "UNLOAD";
                                         if (!SaftyCheckByPass)
@@ -3795,17 +3728,17 @@ namespace EFEMInterface.MessageInterface
                                                 case 2:
 
                                                     //Parameter 2 designates the End-EF used for carrying out. Parameter 3 designates the End-EF used for carrying in.
-                                                    if ((cmd.Parameter[i].Equals("ARM1") || cmd.Parameter[i].Equals("ARM2") || cmd.Parameter[i].Equals("ARM3")))
-                                                    {
-                                                        if (i == 1)
-                                                        {
-                                                            FromARM = cmd.Parameter[i];
-                                                        }
-                                                        else if (i == 2)
-                                                        {
-                                                            ToARM = cmd.Parameter[i];
-                                                        }
-                                                    }
+                                                    //if ((cmd.Parameter[i].Equals("ARM1") || cmd.Parameter[i].Equals("ARM2") || cmd.Parameter[i].Equals("ARM3")))
+                                                    //{
+                                                    //    if (i == 1)
+                                                    //    {
+                                                    //        FromARM = cmd.Parameter[i];
+                                                    //    }
+                                                    //    else if (i == 2)
+                                                    //    {
+                                                    //        ToARM = cmd.Parameter[i];
+                                                    //    }
+                                                    //}
                                                     if ((cmd.Parameter[i].Equals("ARM1")))
                                                     {
                                                         if (i == 1)
@@ -3817,28 +3750,28 @@ namespace EFEMInterface.MessageInterface
                                                             ToARM = "1";
                                                         }
                                                     }
-                                                    else if (cmd.Parameter[i].Equals("ARM2"))
-                                                    {
-                                                        if (i == 1)
-                                                        {
-                                                            FromARM = "2";
-                                                        }
-                                                        else if (i == 2)
-                                                        {
-                                                            ToARM = "2";
-                                                        }
-                                                    }
-                                                    else if (cmd.Parameter[i].Equals("ARM3"))
-                                                    {
-                                                        if (i == 1)
-                                                        {
-                                                            FromARM = "3";
-                                                        }
-                                                        else if (i == 2)
-                                                        {
-                                                            ToARM = "3";
-                                                        }
-                                                    }
+                                                    //else if (cmd.Parameter[i].Equals("ARM2"))
+                                                    //{
+                                                    //    if (i == 1)
+                                                    //    {
+                                                    //        FromARM = "2";
+                                                    //    }
+                                                    //    else if (i == 2)
+                                                    //    {
+                                                    //        ToARM = "2";
+                                                    //    }
+                                                    //}
+                                                    //else if (cmd.Parameter[i].Equals("ARM3"))
+                                                    //{
+                                                    //    if (i == 1)
+                                                    //    {
+                                                    //        FromARM = "3";
+                                                    //    }
+                                                    //    else if (i == 2)
+                                                    //    {
+                                                    //        ToARM = "3";
+                                                    //    }
+                                                    //}
                                                     else
                                                     {
                                                         //命令錯誤
@@ -3857,84 +3790,7 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查  FromTarget + FromARM + ToTarget + ToARM +
-                                        Node n = NodeManagement.Get(FromTarget);
-
-                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
-                                        {
-                                            //檢查Slot是否安全
-                                            if (n.MappingResult.Equals(""))
-                                            {
-                                                SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                               // SendInfo(WaitForHandle);
-                                                return;
-                                            }
-                                            else
-                                            {
-                                                int slotNo = 0;
-                                                if (int.TryParse(FromSlot, out slotNo))
-                                                {
-                                                    Job SlotData = null;
-                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
-                                                    if (SlotData.MapFlag && !SlotData.ErrPosition)
-                                                    {
-
-                                                    }
-                                                    else
-                                                    {
-                                                        SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                       // SendInfo(WaitForHandle);
-                                                        return;
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                   // SendInfo(WaitForHandle);
-                                                    return;
-                                                }
-                                            }
-
-                                        }
-
-                                        n = NodeManagement.Get(ToTarget);
-
-                                        if (n.Type.ToUpper().Equals("LOADPORT") && !SaftyCheckByPass)
-                                        {
-                                            //檢查Slot是否安全
-                                            if (n.MappingResult.Equals(""))
-                                            {
-                                                SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                               // SendInfo(WaitForHandle);
-                                                return;
-                                            }
-                                            else
-                                            {
-                                                int slotNo = 0;
-                                                if (int.TryParse(ToSlot, out slotNo))
-                                                {
-                                                    Job SlotData = null;
-                                                    n.JobList.TryGetValue(slotNo.ToString(), out SlotData);
-                                                    if (!SlotData.MapFlag)
-                                                    {
-
-                                                    }
-                                                    else
-                                                    {
-                                                        SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                       // SendInfo(WaitForHandle);
-                                                        return;
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    SendCancel(WaitForHandle, "SAFTY", Target, ErrorMessage);
-                                                   // SendInfo(WaitForHandle);
-                                                    return;
-                                                }
-                                            }
-
-                                        }
-
+                                       
                                         ErrorMessage = "";
                                         TaskName = "TRANS";
                                         if (!SaftyCheckByPass)
@@ -4300,14 +4156,10 @@ namespace EFEMInterface.MessageInterface
                                         ErrorMessage = "";
                                         TaskName = "HOLD";
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
-                                        if (!NodeManagement.Get("ROBOT01").IsExcuting)
-                                        {
-                                            SendCancel(WaitForHandle, "NOTINMOTION", "ROBOT", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
-                                            return;
-                                        }
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", "ROBOT01");
+                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4347,8 +4199,9 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "RESTR";
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
 
-
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", "ROBOT01");
+                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName,param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4388,9 +4241,10 @@ namespace EFEMInterface.MessageInterface
                                         ErrorMessage = "";
                                         TaskName = "ABORT";
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", "ROBOT01");
 
-
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName,param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4432,8 +4286,9 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "EMS";
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
 
-
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", "ROBOT01");
+                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
