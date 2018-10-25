@@ -36,6 +36,8 @@ namespace EFEMInterface.MessageInterface
 
         public bool SaftyCheckByPass = true;
 
+        public bool OnlineMode = false;
+
         //For TDK Loadport
         private List<OnHandling> WaitForExcute = new List<OnHandling>();
 
@@ -455,6 +457,10 @@ namespace EFEMInterface.MessageInterface
         {
             try
             {
+                if (!OnlineMode)
+                {
+                    return;
+                }
                 string[] cmds = contents.Split(';');
                 foreach (string content in cmds)
                 {
@@ -486,71 +492,9 @@ namespace EFEMInterface.MessageInterface
                                 return;
                             }
 
-                            //if (EFEM_State.Equals("Not Initialize") && cmd.CommandType.Equals(CommandType.MOV))
-                            //{
-                            //    if (!cmd.Command.Equals("INIT"))
-                            //    {
-                            //        SendCancel(WaitForHandle, "NOINITCMPL", "", "Not Initialize");
-                            //       // SendInfo(WaitForHandle);
-                            //        return;
-                            //    }
-                            //}
-                            //Node rob = NodeManagement.Get("ROBOT01");
-                            //if (rob.State.Equals("Not Origin") && cmd.CommandType.Equals(CommandType.MOV))
-                            //{
-                            //    if (!cmd.Command.Equals("ORGSH")&& !cmd.Command.Equals("INIT"))
-                            //    {
-                            //        SendCancel(WaitForHandle, "NOORGCMPL", "ROBOT", "Not Orgin");
-                            //       // SendInfo(WaitForHandle);
-                            //        return;
-                            //    }
-                            //}
-
-                            //Node port;
-
-                            //if (cmd.Command.Equals("SIGOUT"))
-                            //{
-                            //    string[] cmdAry = cmd.OrgMsg.Replace(";\r", "").Split(new char[] { ':', ',', '/' });
-                            //    if (!cmdAry[2].Equals("STOWER"))
-                            //    {
-                            //        lock (WaitForExcute)
-                            //        {
-                            //            port = NodeManagement.Get(NodeNameConvert(cmdAry[2], "LOADPORT"));
-                            //            WaitForHandle.Msg = content;
-                            //            WaitForHandle.Cmd.Target = NodeNameConvert(cmdAry[2], "LOADPORT");
-                            //            WaitForExcute.Add(WaitForHandle);
-
-
-                            //            var find = from Handling in OnHandlingCmds.Values.ToList()
-                            //                       where Handling.Cmd.Target.Equals(WaitForHandle.Cmd.Target)
-                            //                       select Handling;
-                            //            if (find.Count() == 0)
-                            //            {
-                            //                WaitForHandle = WaitForExcute.First();
-                            //                WaitForExcute.Remove(WaitForHandle);
-                            //            }
-                            //            else
-                            //            {
-                            //                return;
-                            //            }
-                            //        }
-                            //    }
-                            //}
-
-                            //var findx = from Handling in OnHandlingCmds.Values.ToList()
-                            //            where Handling.Cmd.Command.Equals(cmd.Command) && Handling.Cmd.CommandType.Equals(CommandType.MOV) && !Handling.Cmd.Command.Equals("OPEN") && !Handling.Cmd.Command.Equals("CLOSE") && 
-                            //            !Handling.Cmd.Command.Equals("CLAMP") && !Handling.Cmd.Command.Equals("UNCLAMP") && !Handling.Cmd.Command.Equals("LOCK") && !Handling.Cmd.Command.Equals("UNLOCK") && !Handling.Cmd.Command.Equals("WAFSH")&&
-                            //            !Handling.Cmd.Command.Equals("DOCK") && !Handling.Cmd.Command.Equals("UNDOCK")
-                            //            select Handling;
+                           
                             OnHandlingCmds.TryAdd(WaitForHandle.ID, WaitForHandle);
-                            //if (findx.Count() != 0)
-                            //{
-
-                            //    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.BUSY, "DUPLICATE", "Command already exsit.");
-                            //    SendInfo(WaitForHandle);
-                            //    return;
-                            //}
-
+                          
 
                             break;
                         case CommandType.ACK://收到上位系統回覆
@@ -730,12 +674,44 @@ namespace EFEMInterface.MessageInterface
                                         string Result = "";
                                         if (TaskName.Equals("ALL"))
                                         {
-                                            Result = EFEM_State;
+                                             
+                                                var find = from n in NodeManagement.GetList().ToList()
+                                                           where (n.Type.Equals("ROBOT") || n.Type.Equals("LOADPORT")) && !n.InitialComplete
+                                                           select n;
+                                            if (find.Count() != 0)
+                                            {
+                                                Result = "Not Initial";
+                                            }
+                                            else
+                                            {
+                                                find = from n in NodeManagement.GetList().ToList()
+                                                       where (n.Type.Equals("ROBOT") || n.Type.Equals("LOADPORT")) && !n.OrgSearchComplete
+                                                       select n;
+                                                if (find.Count() != 0)
+                                                {
+                                                    Result = "Not OrgSearch";
+                                                }
+                                                else
+                                                {
+                                                    Result = "READY";
+                                                }
+                                            }
                                         }
                                         else
                                         {
                                             Node t = NodeManagement.Get(Target);
-                                            Result = t.State;
+                                            if (!t.InitialComplete)
+                                            {
+                                                Result = "Not Initial";
+                                            }
+                                            else if (!t.OrgSearchComplete)
+                                            {
+                                                Result = "Not OrgSearch";
+                                            }
+                                            else
+                                            {
+                                                Result = "READY";
+                                            }
                                         }
 
                                         SendAck(WaitForHandle);
@@ -2768,25 +2744,23 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         //通過檢查
 
-                                        //ErrorMessage = "";
-                                        //TaskName = "DOCK";
-                                        //Dictionary<string, string> param = new Dictionary<string, string>();
-                                        //param.Add("@Target", Target);
-                                        //RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        ErrorMessage = "";
+                                        TaskName = "DOCK";
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", Target);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
-                                        //if (!ErrorMessage.Equals(""))
-                                        //{
-                                        //    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                        //   // SendInfo(WaitForHandle);
-                                        //}
-                                        //else
-                                        //{
-                                        //    SendAck(WaitForHandle);
-                                        //}
+                                        if (!ErrorMessage.Equals(""))
+                                        {
+                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                            // SendInfo(WaitForHandle);
+                                        }
+                                        else
+                                        {
+                                            SendAck(WaitForHandle);
+                                        }
 
-                                        //Bypass
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
+
                                     }
                                     catch
                                     {
@@ -2833,26 +2807,24 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         //通過檢查
 
-                                        //ErrorMessage = "";
-                                        //TaskName = "UNDOCK";
-                                        //Dictionary<string, string> param = new Dictionary<string, string>();
-                                        //param.Add("@Target", Target);
-                                        //RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        ErrorMessage = "";
+                                        TaskName = "UNDOCK";
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", Target);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
-                                        //if (!ErrorMessage.Equals(""))
-                                        //{
-                                        //    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                        //  //  SendInfo(WaitForHandle);
-                                        //}
-                                        //else
-                                        //{
-                                        //    SendAck(WaitForHandle);
-                                        //}
+                                        if (!ErrorMessage.Equals(""))
+                                        {
+                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                            //  SendInfo(WaitForHandle);
+                                        }
+                                        else
+                                        {
+                                            SendAck(WaitForHandle);
+                                        }
 
 
-                                        //Bypass
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle);
+                                       
                                     }
                                     catch
                                     {
