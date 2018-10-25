@@ -64,7 +64,7 @@ namespace EFEMInterface.MessageInterface
                 this.PRS = tmp.PRS;
                 this.FFU = tmp.FFU;
 
-                
+
             }
 
             public void Save()
@@ -96,7 +96,7 @@ namespace EFEMInterface.MessageInterface
             SaftyCheckByPass = SANWA.Utility.Config.SystemConfig.Get().SaftyCheckByPass;
             _EventReport = EventReport;
             Comm = new SocketServer(this);
-           
+
 
         }
 
@@ -346,7 +346,7 @@ namespace EFEMInterface.MessageInterface
                 _EventReport.On_CommandMessage("Err :" + detail);
                 _EventReport.On_CommandMessage("Send:" + CancelMsg);
             }
-            OnHandlingCmds.TryRemove(WaitForHandle.ID,out WaitForHandle);
+            OnHandlingCmds.TryRemove(WaitForHandle.ID, out WaitForHandle);
         }
 
         private void SendInfo(OnHandling WaitForHandle)
@@ -739,9 +739,9 @@ namespace EFEMInterface.MessageInterface
                                         }
 
                                         SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle,Result,"");
-                                       
-                                        
+                                        SendInfo(WaitForHandle, Result, "");
+
+
                                     }
                                     catch
                                     {
@@ -793,12 +793,12 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -899,12 +899,12 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", cmd.Target);
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -1135,7 +1135,7 @@ namespace EFEMInterface.MessageInterface
                                             if (port == null)
                                             {
                                                 SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Node not found.");
-                                               // SendInfo(WaitForHandle);
+                                                // SendInfo(WaitForHandle);
                                             }
                                             else
                                             {
@@ -1262,7 +1262,7 @@ namespace EFEMInterface.MessageInterface
                                                        cmd.Parameter[i].Replace("P", "").Length == 1)
                                                     {
                                                         TaskName = "READ_LCD";
-                                                        Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT").Replace("LOADPORT","SMARTTAG");
+                                                        Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT").Replace("LOADPORT", "SMARTTAG");
                                                     }
                                                     else
                                                     {
@@ -1284,8 +1284,8 @@ namespace EFEMInterface.MessageInterface
                                         //SendAck(WaitForHandle);
                                         //SendInfo(WaitForHandle, "FOUPIDXX", "");
                                         Dictionary<string, string> Param = new Dictionary<string, string>();
-                                        Param.Add("@Target", Target);                                      
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, Param);
+                                        Param.Add("@Target", Target);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, Param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -1482,12 +1482,12 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> Param = new Dictionary<string, string>();
                                         Param.Add("@Target", Target);
                                         Param.Add("@Value", no.ToString());
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, Param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, Param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -1611,20 +1611,20 @@ namespace EFEMInterface.MessageInterface
                                                         else
                                                         {
                                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "ptDest not found.");
-                                                          //  SendInfo(WaitForHandle);
+                                                            //  SendInfo(WaitForHandle);
                                                         }
 
                                                     }
                                                     else
                                                     {
                                                         SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "ptAligner not found.");
-                                                      //  SendInfo(WaitForHandle);
+                                                        //  SendInfo(WaitForHandle);
                                                     }
                                                 }
                                                 else
                                                 {
                                                     SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "NextRobot not found.");
-                                                   // SendInfo(WaitForHandle);
+                                                    // SendInfo(WaitForHandle);
                                                 }
                                             }
                                             else if (cmd.Parameter[1].IndexOf("D") != -1)//指定角度
@@ -1647,7 +1647,7 @@ namespace EFEMInterface.MessageInterface
                                             else
                                             {
                                                 SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "NextRobot not found.");
-                                               // SendInfo(WaitForHandle);
+                                                // SendInfo(WaitForHandle);
                                             }
                                         }
                                         else
@@ -1655,7 +1655,7 @@ namespace EFEMInterface.MessageInterface
                                             //回報設備不可使用
 
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", "Aligner not found.");
-                                          //  SendInfo(WaitForHandle);
+                                            //  SendInfo(WaitForHandle);
                                         }
 
                                     }
@@ -1700,12 +1700,12 @@ namespace EFEMInterface.MessageInterface
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
 
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                          //  SendInfo(WaitForHandle);
+                                            //  SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -1792,12 +1792,12 @@ namespace EFEMInterface.MessageInterface
                                         param.Add("@Target", Target);
                                         param.Add("@Arm", Arm);
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2029,19 +2029,19 @@ namespace EFEMInterface.MessageInterface
                                             Dictionary<string, string> param = new Dictionary<string, string>();
                                             param.Add("@Target", Target);
                                             param.Add("@state", state);
-                                            TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                             if (!ErrorMessage.Equals(""))
                                             {
                                                 SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                               // SendInfo(WaitForHandle);
+                                                // SendInfo(WaitForHandle);
                                             }
                                             else
                                             {
                                                 SendAck(WaitForHandle);
 
                                             }
-                                           
+
                                         }
                                         else if (type.Equals("STOWER"))
                                         {
@@ -2051,13 +2051,13 @@ namespace EFEMInterface.MessageInterface
                                                     switch (state)
                                                     {
                                                         case "TRUE":
-                                                            RouteControl.DIO.SetIO("RED", "True");
+                                                            RouteControl.Instance.DIO.SetIO("RED", "True");
                                                             break;
                                                         case "FALSE":
-                                                            RouteControl.DIO.SetIO("RED", "False");
+                                                            RouteControl.Instance.DIO.SetIO("RED", "False");
                                                             break;
                                                         case "BLINK":
-                                                            RouteControl.DIO.SetBlink("RED", "True");
+                                                            RouteControl.Instance.DIO.SetBlink("RED", "True");
                                                             break;
                                                     }
                                                     break;
@@ -2065,13 +2065,13 @@ namespace EFEMInterface.MessageInterface
                                                     switch (state)
                                                     {
                                                         case "TRUE":
-                                                            RouteControl.DIO.SetIO("ORANGE", "True");
+                                                            RouteControl.Instance.DIO.SetIO("ORANGE", "True");
                                                             break;
                                                         case "FALSE":
-                                                            RouteControl.DIO.SetIO("ORANGE", "False");
+                                                            RouteControl.Instance.DIO.SetIO("ORANGE", "False");
                                                             break;
                                                         case "BLINK":
-                                                            RouteControl.DIO.SetBlink("ORANGE", "True");
+                                                            RouteControl.Instance.DIO.SetBlink("ORANGE", "True");
                                                             break;
                                                     }
                                                     break;
@@ -2079,13 +2079,13 @@ namespace EFEMInterface.MessageInterface
                                                     switch (state)
                                                     {
                                                         case "TRUE":
-                                                            RouteControl.DIO.SetIO("GREEN", "True");
+                                                            RouteControl.Instance.DIO.SetIO("GREEN", "True");
                                                             break;
                                                         case "FALSE":
-                                                            RouteControl.DIO.SetIO("GREEN", "False");
+                                                            RouteControl.Instance.DIO.SetIO("GREEN", "False");
                                                             break;
                                                         case "BLINK":
-                                                            RouteControl.DIO.SetBlink("GREEN", "True");
+                                                            RouteControl.Instance.DIO.SetBlink("GREEN", "True");
                                                             break;
                                                     }
                                                     break;
@@ -2093,13 +2093,13 @@ namespace EFEMInterface.MessageInterface
                                                     switch (state)
                                                     {
                                                         case "TRUE":
-                                                            RouteControl.DIO.SetIO("BLUE", "True");
+                                                            RouteControl.Instance.DIO.SetIO("BLUE", "True");
                                                             break;
                                                         case "FALSE":
-                                                            RouteControl.DIO.SetIO("BLUE", "False");
+                                                            RouteControl.Instance.DIO.SetIO("BLUE", "False");
                                                             break;
                                                         case "BLINK":
-                                                            RouteControl.DIO.SetBlink("BLUE", "True");
+                                                            RouteControl.Instance.DIO.SetBlink("BLUE", "True");
                                                             break;
                                                     }
                                                     break;
@@ -2107,10 +2107,10 @@ namespace EFEMInterface.MessageInterface
                                                     switch (state)
                                                     {
                                                         case "TRUE":
-                                                            RouteControl.DIO.SetIO("BUZZER1", "True");
+                                                            RouteControl.Instance.DIO.SetIO("BUZZER1", "True");
                                                             break;
                                                         case "FALSE":
-                                                            RouteControl.DIO.SetIO("BUZZER1", "False");
+                                                            RouteControl.Instance.DIO.SetIO("BUZZER1", "False");
                                                             break;
                                                     }
                                                     break;
@@ -2118,10 +2118,10 @@ namespace EFEMInterface.MessageInterface
                                                     switch (state)
                                                     {
                                                         case "TRUE":
-                                                            RouteControl.DIO.SetIO("BUZZER2", "True");
+                                                            RouteControl.Instance.DIO.SetIO("BUZZER2", "True");
                                                             break;
                                                         case "FALSE":
-                                                            RouteControl.DIO.SetIO("BUZZER2", "False");
+                                                            RouteControl.Instance.DIO.SetIO("BUZZER2", "False");
                                                             break;
                                                     }
                                                     break;
@@ -2377,7 +2377,7 @@ namespace EFEMInterface.MessageInterface
                                         else
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", Target + " not found");
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
 
 
@@ -2480,12 +2480,12 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
                                         WaitForHandle.Cmd.Target = Target;
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2575,12 +2575,12 @@ namespace EFEMInterface.MessageInterface
                                         param.Add("@Target", Target);
                                         WaitForHandle.Cmd.Target = Target;
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2639,12 +2639,12 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2706,12 +2706,12 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "UNLOCK";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2772,7 +2772,7 @@ namespace EFEMInterface.MessageInterface
                                         //TaskName = "DOCK";
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
                                         //param.Add("@Target", Target);
-                                        //TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        //RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         //if (!ErrorMessage.Equals(""))
                                         //{
@@ -2837,7 +2837,7 @@ namespace EFEMInterface.MessageInterface
                                         //TaskName = "UNDOCK";
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
                                         //param.Add("@Target", Target);
-                                        //TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        //RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         //if (!ErrorMessage.Equals(""))
                                         //{
@@ -2905,12 +2905,12 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "OPEN";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -2966,12 +2966,12 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "CLOSE";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3026,12 +3026,12 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "WAFSH";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3083,7 +3083,7 @@ namespace EFEMInterface.MessageInterface
                                                     {
                                                         Target = "ALIGN1";
                                                         Position = NodeNameConvert(Target, "ALIGNER");
-                                                    }                                                    
+                                                    }
                                                     else if (cmd.Parameter[i].IndexOf("BF1") != -1)
                                                     {
                                                         //Target = cmd.Parameter[i].Substring(0, 2);
@@ -3192,8 +3192,9 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Slot", Slot);
                                         param.Add("@Arm", Arm);
+                                        param.Add("@Target", "ROBOT01");
                                         param.Add("@Position", Position);
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -3353,7 +3354,7 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查
-                                        
+
 
                                         ErrorMessage = "";
                                         TaskName = "LOAD";
@@ -3370,12 +3371,12 @@ namespace EFEMInterface.MessageInterface
 
 
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3521,7 +3522,7 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查
-                                        
+
                                         ErrorMessage = "";
                                         TaskName = "UNLOAD";
                                         if (!SaftyCheckByPass)
@@ -3534,12 +3535,12 @@ namespace EFEMInterface.MessageInterface
                                         param.Add("@Arm", Arm);
                                         param.Add("@Position", Position);
                                         param.Add("@Method", TargetCheckMethod);
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3790,7 +3791,7 @@ namespace EFEMInterface.MessageInterface
 
                                         }
                                         //通過檢查  FromTarget + FromARM + ToTarget + ToARM +
-                                       
+
                                         ErrorMessage = "";
                                         TaskName = "TRANS";
                                         if (!SaftyCheckByPass)
@@ -3805,12 +3806,12 @@ namespace EFEMInterface.MessageInterface
                                         param.Add("@FromSlot", FromSlot);
                                         param.Add("@ToSlot", ToSlot);
                                         param.Add("@Target", "ROBOT01");
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -3934,7 +3935,7 @@ namespace EFEMInterface.MessageInterface
                                 //        param.Add("@CarryOutARM", CarryOutARM);
                                 //        param.Add("@CarryInARM", CarryInARM);
 
-                                //        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                //        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                 //        if (!ErrorMessage.Equals(""))
                                 //        {
@@ -4018,7 +4019,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", NodeNameConvert(Target, "ALIGNER"));
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4107,7 +4108,7 @@ namespace EFEMInterface.MessageInterface
                                             TaskName = "LOADPORT_Init";
                                             Dictionary<string, string> param = new Dictionary<string, string>();
                                             param.Add("@Target", Target);
-                                            TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
                                         }
                                         else
                                         {
@@ -4116,12 +4117,12 @@ namespace EFEMInterface.MessageInterface
                                             param.Add("@Target", Target);
                                             param.Add("@Method", Method);
 
-                                            TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
                                         }
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4159,12 +4160,12 @@ namespace EFEMInterface.MessageInterface
 
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4201,7 +4202,7 @@ namespace EFEMInterface.MessageInterface
 
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName,param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4244,12 +4245,12 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
 
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName,param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4288,12 +4289,12 @@ namespace EFEMInterface.MessageInterface
 
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
-                                        TaskJobManagment.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                           // SendInfo(WaitForHandle);
+                                            // SendInfo(WaitForHandle);
                                         }
                                         else
                                         {
@@ -4562,7 +4563,7 @@ namespace EFEMInterface.MessageInterface
                                 }
                                 break;
                             case "ORGSH":
-                                if (WaitForHandle.Cmd.Target.Equals("ALL")|| WaitForHandle.Cmd.Target.IndexOf("ROBOT")!=-1)
+                                if (WaitForHandle.Cmd.Target.Equals("ALL") || WaitForHandle.Cmd.Target.IndexOf("ROBOT") != -1)
                                 {
                                     EFEM_State = "Ready";
                                 }
@@ -4587,7 +4588,7 @@ namespace EFEMInterface.MessageInterface
                                 switch (WaitForHandle.Cmd.Arm)
                                 {
                                     case "1":
-                                        if (Target.RArmClamp&& Target.RArmUnClamp)
+                                        if (Target.RArmClamp && Target.RArmUnClamp)
                                         {
                                             Data1 = "ON";
                                         }
@@ -4644,14 +4645,15 @@ namespace EFEMInterface.MessageInterface
             }
         }
 
-        public void On_TaskJob_Aborted(string TaskID, string NodeName, string ReportType, string Message)
+        public void On_TaskJob_Aborted(string TaskID, string Location, string ReportType, string Message)
         {
             OnHandling WaitForHandle;
+            logger.Debug("(On_TaskJob_Aborted)" + ReportType + "=" + Message);
             if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
             {
                 try
                 {
-                    AlarmMessage alm = AlmMapping.Get(NodeName, Message);
+                    AlarmMessage alm = AlmMapping.Get("", Message);
 
 
                     if (ReportType.Equals("ABS"))
@@ -4667,20 +4669,20 @@ namespace EFEMInterface.MessageInterface
                         //}
 
                         LastError = alm;
-                        if (LastError.Position.Equals(""))
+                        if (!Location.Equals(""))
                         {
-                            if (NodeName.ToUpper().IndexOf("LOADPORT") != -1)
-                            {
-                                alm.Position = "P" + NodeName.Replace("LOADPORT0", "");
-                            }
-
+                            LastError.Position = Location;
                         }
                         SendABS(WaitForHandle, LastError.Code_Group, LastError.Position);
                     }
                     else if (ReportType.Equals("CAN"))
                     {
+                        if (!Location.Equals(""))
+                        {
+                            alm.Position = Location;
+                        }
                         SendCancel(WaitForHandle, alm.Code_Group, alm.Position, "");
-                       // SendInfo(WaitForHandle);
+                        // SendInfo(WaitForHandle);
                     }
 
                 }
@@ -4696,7 +4698,7 @@ namespace EFEMInterface.MessageInterface
                 logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + TaskID + " Message:" + Message);
             }
         }
-        
+
         public void On_Event_Trigger(string Type, string Source, string Name, string Value)
         {
             try
