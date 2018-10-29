@@ -133,7 +133,7 @@ namespace EFEMInterface.Comm
                     // Check for end-of-file tag. If it is not there, read   
                     // more data.  
                     content = state.sb.ToString();
-                    if (content.IndexOf(";") > -1)
+                    if (content.IndexOf(";\r") > -1)
                     {
                         // All the data has been read from the   
                         // client. Display it on the console.  

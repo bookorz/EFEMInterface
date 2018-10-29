@@ -36,7 +36,7 @@ namespace EFEMInterface.MessageInterface
 
         public bool SaftyCheckByPass = true;
 
-        public bool OnlineMode = false;
+        public bool OnlineMode = true;
 
         //For TDK Loadport
         private List<OnHandling> WaitForExcute = new List<OnHandling>();
@@ -499,7 +499,7 @@ namespace EFEMInterface.MessageInterface
                             break;
                         case CommandType.ACK://收到上位系統回覆
                             List<OnHandling> tmp = OnHandlingCmds.Values.ToList();
-                            tmp.Sort((x, y) => { return x.ReceiveTime.CompareTo(y.ReceiveTime); });
+                            tmp.Sort((x, y) => { return -x.ReceiveTime.CompareTo(y.ReceiveTime); });
 
                             var findHandling = from Handling in tmp
                                                where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) != -1
@@ -1238,7 +1238,7 @@ namespace EFEMInterface.MessageInterface
                                                        cmd.Parameter[i].Replace("P", "").Length == 1)
                                                     {
                                                         TaskName = "READ_LCD";
-                                                        Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT").Replace("LOADPORT", "SMARTTAG");
+                                                        Target = NodeNameConvert(cmd.Parameter[i], "LOADPORT");
                                                     }
                                                     else
                                                     {
@@ -1259,8 +1259,10 @@ namespace EFEMInterface.MessageInterface
                                         //通過檢查
                                         //SendAck(WaitForHandle);
                                         //SendInfo(WaitForHandle, "FOUPIDXX", "");
+                                        Target = NodeManagement.Get(Target).Associated_Node;
                                         Dictionary<string, string> Param = new Dictionary<string, string>();
                                         Param.Add("@Target", Target);
+                                        WaitForHandle.Cmd.Target = Target;
                                         RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, Param);
 
                                         if (!ErrorMessage.Equals(""))
