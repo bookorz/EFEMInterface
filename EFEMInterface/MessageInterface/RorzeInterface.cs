@@ -34,7 +34,6 @@ namespace EFEMInterface.MessageInterface
 
         OnHandling EventHandling = null;
 
-        public bool SaftyCheckByPass = true;
 
         public bool OnlineMode = true;
 
@@ -95,7 +94,7 @@ namespace EFEMInterface.MessageInterface
 
         public RorzeInterface(IEFEMControl EventReport)
         {
-            SaftyCheckByPass = SANWA.Utility.Config.SystemConfig.Get().SaftyCheckByPass;
+    
             _EventReport = EventReport;
             Comm = new SocketServer(this);
 
@@ -457,6 +456,7 @@ namespace EFEMInterface.MessageInterface
         {
             try
             {
+                TaskJobManagment.CurrentProceedTask CurrTask;
                 if (!OnlineMode)
                 {
                     return;
@@ -769,7 +769,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage,out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -875,7 +875,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", cmd.Target);
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -1263,7 +1263,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> Param = new Dictionary<string, string>();
                                         Param.Add("@Target", Target);
                                         WaitForHandle.Cmd.Target = Target;
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, Param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, Param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -1460,7 +1460,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> Param = new Dictionary<string, string>();
                                         Param.Add("@Target", Target);
                                         Param.Add("@Value", no.ToString());
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, Param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, Param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -1678,7 +1678,7 @@ namespace EFEMInterface.MessageInterface
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
 
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -1770,7 +1770,7 @@ namespace EFEMInterface.MessageInterface
                                         param.Add("@Target", Target);
                                         param.Add("@Arm", Arm);
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -2007,7 +2007,7 @@ namespace EFEMInterface.MessageInterface
                                             Dictionary<string, string> param = new Dictionary<string, string>();
                                             param.Add("@Target", Target);
                                             param.Add("@state", state);
-                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                             if (!ErrorMessage.Equals(""))
                                             {
@@ -2458,7 +2458,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
                                         WaitForHandle.Cmd.Target = Target;
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -2553,7 +2553,7 @@ namespace EFEMInterface.MessageInterface
                                         param.Add("@Target", Target);
                                         WaitForHandle.Cmd.Target = Target;
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -2617,7 +2617,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -2684,7 +2684,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "UNLOCK";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -2750,7 +2750,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "DOCK";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -2813,7 +2813,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "UNDOCK";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -2879,7 +2879,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "OPEN";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -2940,7 +2940,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "CLOSE";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -3000,7 +3000,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "WAFSH";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -3168,7 +3168,7 @@ namespace EFEMInterface.MessageInterface
                                         param.Add("@Arm", Arm);
                                         param.Add("@Target", "ROBOT01");
                                         param.Add("@Position", Position);
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -3332,10 +3332,7 @@ namespace EFEMInterface.MessageInterface
 
                                         ErrorMessage = "";
                                         TaskName = "LOAD";
-                                        if (!SaftyCheckByPass)
-                                        {
-                                            TaskName += "_SaftyCheck";
-                                        }
+                                        
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
                                         param.Add("@Slot", Slot);
@@ -3345,7 +3342,7 @@ namespace EFEMInterface.MessageInterface
 
 
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -3499,17 +3496,14 @@ namespace EFEMInterface.MessageInterface
 
                                         ErrorMessage = "";
                                         TaskName = "UNLOAD";
-                                        if (!SaftyCheckByPass)
-                                        {
-                                            TaskName += "_SaftyCheck";
-                                        }
+                                        
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
                                         param.Add("@Slot", Slot);
                                         param.Add("@Arm", Arm);
                                         param.Add("@Position", Position);
                                         param.Add("@Method", TargetCheckMethod);
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -3768,10 +3762,7 @@ namespace EFEMInterface.MessageInterface
 
                                         ErrorMessage = "";
                                         TaskName = "TRANS";
-                                        if (!SaftyCheckByPass)
-                                        {
-                                            TaskName += "_SaftyCheck";
-                                        }
+                                        
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@FromPosition", FromTarget);
                                         param.Add("@ToPosition", ToTarget);
@@ -3780,7 +3771,7 @@ namespace EFEMInterface.MessageInterface
                                         param.Add("@FromSlot", FromSlot);
                                         param.Add("@ToSlot", ToSlot);
                                         param.Add("@Target", "ROBOT01");
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -3993,7 +3984,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", NodeNameConvert(Target, "ALIGNER"));
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4082,7 +4073,7 @@ namespace EFEMInterface.MessageInterface
                                             TaskName = "LOADPORT_Init";
                                             Dictionary<string, string> param = new Dictionary<string, string>();
                                             param.Add("@Target", Target);
-                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
                                         }
                                         else
                                         {
@@ -4091,7 +4082,7 @@ namespace EFEMInterface.MessageInterface
                                             param.Add("@Target", Target);
                                             param.Add("@Method", Method);
 
-                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
                                         }
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4134,7 +4125,7 @@ namespace EFEMInterface.MessageInterface
 
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4176,7 +4167,7 @@ namespace EFEMInterface.MessageInterface
 
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4219,7 +4210,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4263,7 +4254,7 @@ namespace EFEMInterface.MessageInterface
 
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -4898,7 +4889,7 @@ namespace EFEMInterface.MessageInterface
                                             break;
                                     }
                                 }
-                                Data1 = "11111111111000000000000000000000";
+                                //Data1 = "11111111111000000000000000000000";
                                 SIGSTAT_SYSTEM_Data1 = BinaryStringToHexString(Data1);
                                 SIGSTAT_SYSTEM_Data2 = BinaryStringToHexString(Data2);
                                 if (Events.SYSTEM)
