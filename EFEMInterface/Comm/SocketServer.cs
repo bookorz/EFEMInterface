@@ -55,7 +55,7 @@ namespace EFEMInterface.Comm
             //IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             //IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
             IPAddress ipAddress = IPAddress.Parse(SystemConfig.Get().EFEMInterfaceConn);
-            IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 13000);
+            IPEndPoint localEndPoint = new IPEndPoint(ipAddress, SystemConfig.Get().EFEMInterfaceConn_Port);
 
             // Create a TCP/IP socket.  
             Socket listener = new Socket(ipAddress.AddressFamily,

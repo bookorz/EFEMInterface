@@ -94,7 +94,7 @@ namespace EFEMInterface.MessageInterface
 
         public RorzeInterface(IEFEMControl EventReport)
         {
-    
+
             _EventReport = EventReport;
             Comm = new SocketServer(this);
 
@@ -492,9 +492,9 @@ namespace EFEMInterface.MessageInterface
                                 return;
                             }
 
-                           
+
                             OnHandlingCmds.TryAdd(WaitForHandle.ID, WaitForHandle);
-                          
+
 
                             break;
                         case CommandType.ACK://收到上位系統回覆
@@ -674,10 +674,10 @@ namespace EFEMInterface.MessageInterface
                                         string Result = "";
                                         if (TaskName.Equals("ALL"))
                                         {
-                                             
-                                                var find = from n in NodeManagement.GetList().ToList()
-                                                           where (n.Type.Equals("ROBOT") || n.Type.Equals("LOADPORT")) && !n.InitialComplete
-                                                           select n;
+
+                                            var find = from n in NodeManagement.GetList().ToList()
+                                                       where (n.Type.Equals("ROBOT") || n.Type.Equals("LOADPORT")) && !n.InitialComplete
+                                                       select n;
                                             if (find.Count() != 0)
                                             {
                                                 Result = "Not Initial";
@@ -769,7 +769,7 @@ namespace EFEMInterface.MessageInterface
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
 
-                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage,out CurrTask, TaskName, param);
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
                                         {
@@ -1259,7 +1259,15 @@ namespace EFEMInterface.MessageInterface
                                         //通過檢查
                                         //SendAck(WaitForHandle);
                                         //SendInfo(WaitForHandle, "FOUPIDXX", "");
-                                        Target = NodeManagement.Get(Target).Associated_Node;
+                                        foreach(Node each in NodeManagement.GetList())
+                                        {//找到SmartTag
+                                            if (each.Associated_Node.ToUpper().Equals(Target.ToUpper()))
+                                            {
+                                                Target = each.Name;
+                                                break;
+                                            }
+                                        }
+                                        
                                         Dictionary<string, string> Param = new Dictionary<string, string>();
                                         Param.Add("@Target", Target);
                                         WaitForHandle.Cmd.Target = Target;
@@ -2826,7 +2834,7 @@ namespace EFEMInterface.MessageInterface
                                         }
 
 
-                                       
+
                                     }
                                     catch
                                     {
@@ -3332,7 +3340,7 @@ namespace EFEMInterface.MessageInterface
 
                                         ErrorMessage = "";
                                         TaskName = "LOAD";
-                                        
+
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
                                         param.Add("@Slot", Slot);
@@ -3496,7 +3504,7 @@ namespace EFEMInterface.MessageInterface
 
                                         ErrorMessage = "";
                                         TaskName = "UNLOAD";
-                                        
+
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", "ROBOT01");
                                         param.Add("@Slot", Slot);
@@ -3762,12 +3770,12 @@ namespace EFEMInterface.MessageInterface
 
                                         ErrorMessage = "";
                                         TaskName = "TRANS";
-                                        
+
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@FromPosition", FromTarget);
                                         param.Add("@ToPosition", ToTarget);
-                                        param.Add("@FromARM", FromARM);
-                                        param.Add("@ToARM", ToARM);
+                                        param.Add("@FromArm", FromARM);
+                                        param.Add("@ToArm", ToARM);
                                         param.Add("@FromSlot", FromSlot);
                                         param.Add("@ToSlot", ToSlot);
                                         param.Add("@Target", "ROBOT01");
@@ -4012,7 +4020,7 @@ namespace EFEMInterface.MessageInterface
                                         //檢查命令格式
                                         TaskName = "";
                                         Target = "";
-                                        string Method = "";
+
                                         for (int i = 0; i < cmd.Parameter.Count; i++)
                                         {
                                             switch (i)
@@ -4024,24 +4032,24 @@ namespace EFEMInterface.MessageInterface
                                                         cmd.Parameter[i].Replace("ROB", "").Length == 1)
                                                     {
                                                         Target = NodeNameConvert(cmd.Parameter[i], "ROBOT");
-                                                        Method = "RobotHome";
+
                                                     }
                                                     else if (cmd.Parameter[i].Equals("ROB"))
                                                     {
                                                         Target = NodeNameConvert("ROB1", "ROBOT");
-                                                        Method = "RobotHome";
+
                                                     }
                                                     else if (cmd.Parameter[i].IndexOf("ALIGN") != -1 &&
                                                        int.TryParse(cmd.Parameter[i].Replace("ALIGN", ""), out no) &&
                                                        cmd.Parameter[i].Replace("ALIGN", "").Length == 1)
                                                     {
                                                         Target = NodeNameConvert(cmd.Parameter[i], "ALIGNER");
-                                                        Method = "AlignerHome";
+
                                                     }
                                                     else if (cmd.Parameter[i].Equals("ALIGN"))
                                                     {
                                                         Target = NodeNameConvert("ALIGN1", "ALIGNER");
-                                                        Method = "AlignerHome";
+
                                                     }
                                                     else if (cmd.Parameter[i].IndexOf("P") != -1 &&
                                                         int.TryParse(cmd.Parameter[i].Replace("P", ""), out no) &&
@@ -4068,22 +4076,13 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         //通過檢查
                                         ErrorMessage = "";
-                                        if (Target.IndexOf("LOADPORT") != -1)
-                                        {
-                                            TaskName = "LOADPORT_Init";
-                                            Dictionary<string, string> param = new Dictionary<string, string>();
-                                            param.Add("@Target", Target);
-                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
-                                        }
-                                        else
-                                        {
-                                            TaskName = "HOME";
-                                            Dictionary<string, string> param = new Dictionary<string, string>();
-                                            param.Add("@Target", Target);
-                                            param.Add("@Method", Method);
 
-                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
-                                        }
+                                        TaskName = "HOME";
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", Target);
+
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
+
                                         if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
@@ -4542,7 +4541,7 @@ namespace EFEMInterface.MessageInterface
                             case "MAPDT":
                                 Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
                                 string Mapping = Target.MappingResult;
-                                Mapping.Replace("2", "3").Replace("E", "3").Replace("W", "7").Replace("?", "9");
+                                Mapping = Mapping.Replace("2", "3").Replace("E", "3").Replace("W", "7").Replace("?", "9");
 
 
                                 SendInfo(WaitForHandle, Mapping, "");
