@@ -4498,22 +4498,22 @@ namespace EFEMInterface.MessageInterface
         #region Event report from Transfer control
         //***************Event report from Transfer control*****************Begin
 
-        public void On_TaskJob_Ack(string TaskID)
+        public void On_TaskJob_Ack(TaskJobManagment.CurrentProceedTask Task)
         {
             OnHandling WaitForHandle;
 
-            if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
+            if (OnHandlingCmds.TryGetValue(Task.Id, out WaitForHandle))
             {
                 SendAck(WaitForHandle);
             }
         }
 
-        public void On_TaskJob_Finished(string TaskID)
+        public void On_TaskJob_Finished(TaskJobManagment.CurrentProceedTask Task)
         {
             OnHandling WaitForHandle;
             Node Target = null;
             string Data1 = "";
-            if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
+            if (OnHandlingCmds.TryGetValue(Task.Id, out WaitForHandle))
             {
                 switch (WaitForHandle.Cmd.CommandType)
                 {
@@ -4605,15 +4605,15 @@ namespace EFEMInterface.MessageInterface
             }
             else
             {
-                logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + TaskID);
+                logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + Task.Id);
             }
         }
 
-        public void On_TaskJob_Aborted(string TaskID, string Location, string ReportType, string Message)
+        public void On_TaskJob_Aborted(TaskJobManagment.CurrentProceedTask Task, string Location, string ReportType, string Message)
         {
             OnHandling WaitForHandle;
             logger.Debug("(On_TaskJob_Aborted)" + ReportType + "=" + Message);
-            if (OnHandlingCmds.TryGetValue(TaskID, out WaitForHandle))
+            if (OnHandlingCmds.TryGetValue(Task.Id, out WaitForHandle))
             {
                 try
                 {
@@ -4659,7 +4659,7 @@ namespace EFEMInterface.MessageInterface
             }
             else
             {
-                logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + TaskID + " Message:" + Message);
+                logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + Task.Id + " Message:" + Message);
             }
         }
 
@@ -5055,6 +5055,11 @@ namespace EFEMInterface.MessageInterface
         public string BToHex(byte[] BData)
         {
             return BitConverter.ToString(BData).Replace("-", "");
+        }
+
+        public void On_Foup_Presence(string PortName, bool Presence)
+        {
+            
         }
 
         //***************Event report from Transfer control*****************End
