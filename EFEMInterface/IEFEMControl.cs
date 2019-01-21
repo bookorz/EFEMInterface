@@ -13,6 +13,7 @@ namespace EFEMInterface
         void On_Connection_Connected();
         void On_Connection_Disconnected();
         void On_CommandMessage(string msg);
+        void On_EFEM_Status_changed(string status);
 
     }
 }
