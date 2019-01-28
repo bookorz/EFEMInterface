@@ -501,7 +501,20 @@ namespace EFEMInterface.MessageInterface
                                 //SendInfo(WaitForHandle);
                                 return;
                             }
+                            foreach(Node port in NodeManagement.GetLoadPortList())
+                            {
+                                if (!port.Enable)
+                                {
+                                    string pName = "P" + int.Parse(port.Name.Replace("LOADPORT", "")).ToString();
 
+                                    if (cmd.OrgMsg.Contains(pName))
+                                    {
+                                        SendCancel(WaitForHandle, "NOLINK", pName, "Port disabled.");
+                                        
+                                        return;
+                                    }
+                                }
+                            }
 
                             OnHandlingCmds.TryAdd(WaitForHandle.ID, WaitForHandle);
 
