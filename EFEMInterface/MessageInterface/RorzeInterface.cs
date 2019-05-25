@@ -1023,7 +1023,7 @@ namespace EFEMInterface.MessageInterface
                                                         Node robot = NodeManagement.Get("ROBOT01");
 
                                                         //returnValue = robot.R_Hold_Status + robot.L_Hold_Status;
-                                                        if (robot.RArmClamp)
+                                                        if (robot.R_Presence)
                                                         {
                                                             returnValue = "10";
                                                         }
