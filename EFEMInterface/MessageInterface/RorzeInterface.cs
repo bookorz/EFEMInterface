@@ -1008,6 +1008,7 @@ namespace EFEMInterface.MessageInterface
                                     try
                                     {
                                         string returnValue = "";
+                                        Target = "";
                                         //檢查命令格式
                                         for (int i = 0; i < cmd.Parameter.Count; i++)
                                         {
@@ -1020,17 +1021,19 @@ namespace EFEMInterface.MessageInterface
                                                     }
                                                     else if (cmd.Parameter[i].Equals("TRACK"))
                                                     {
-                                                        Node robot = NodeManagement.Get("ROBOT01");
+                                                        //Node robot = NodeManagement.Get("ROBOT01");
 
                                                         //returnValue = robot.R_Hold_Status + robot.L_Hold_Status;
-                                                        if (robot.R_Presence)
-                                                        {
-                                                            returnValue = "10";
-                                                        }
-                                                        else
-                                                        {
-                                                            returnValue = "00";
-                                                        }
+                                                        //if (robot.R_Presence)
+                                                        //{
+                                                        //    returnValue = "10";
+                                                        //}
+                                                        //else
+                                                        //{
+                                                        //    returnValue = "00";
+                                                        //}
+                                                        Target = "ROBOT01";
+                                                        TaskName = "ROBOT_PRESENCE";
                                                     }
                                                     else if (cmd.Parameter[i].IndexOf("PRS") != -1 &&
                                                         int.TryParse(cmd.Parameter[i].Replace("PRS", ""), out no) &&
@@ -1062,10 +1065,30 @@ namespace EFEMInterface.MessageInterface
                                             }
 
                                         }
-                                        //通過檢查
-                                        SendAck(WaitForHandle);
-                                        SendInfo(WaitForHandle, returnValue, "");
+                                        if (Target.Equals(""))
+                                        {
+                                            //通過檢查
+                                            SendAck(WaitForHandle);
+                                            SendInfo(WaitForHandle, returnValue, "");
+                                        }
+                                        else
+                                        {
+                                            Dictionary<string, string> Param = new Dictionary<string, string>();
+                                            Param.Add("@Target", Target);
+                                            WaitForHandle.Cmd.Target = Target;
+                                            RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, Param);
 
+                                            if (!ErrorMessage.Equals(""))
+                                            {
+                                                SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                                // SendInfo(WaitForHandle);
+                                            }
+                                            else
+                                            {
+                                                SendAck(WaitForHandle);
+                                                LastError = null;
+                                            }
+                                        }
                                     }
                                     catch
                                     {
@@ -4789,6 +4812,12 @@ namespace EFEMInterface.MessageInterface
                                 Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
 
                                 SendInfo(WaitForHandle, Target.FoupID, "");
+                                break;
+                            case "STATE":
+                                Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
+                                string p = (Target.R_Presence? "1":"0") + (Target.L_Presence? "1":"0");
+                                
+                                SendInfo(WaitForHandle, p, "");
                                 break;
                         }
                         break;
