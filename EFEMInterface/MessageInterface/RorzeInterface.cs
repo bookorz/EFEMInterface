@@ -1597,10 +1597,10 @@ namespace EFEMInterface.MessageInterface
                                             }
                                         }
                                         //通過檢查
-                                        if (no == 100)
-                                        {
-                                            no = 0;
-                                        }
+                                        //if (no == 100)
+                                        //{
+                                        //    no = 0;
+                                        //}
                                         Dictionary<string, string> Param = new Dictionary<string, string>();
                                         Param.Add("@Target", Target);
                                         Param.Add("@Value", no.ToString());
