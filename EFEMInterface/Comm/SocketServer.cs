@@ -1,14 +1,11 @@
 ﻿using EFEMInterface.MessageInterface;
 using log4net;
-using SANWA.Utility.Config;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+using TransferControl.Config;
 
 namespace EFEMInterface.Comm
 {

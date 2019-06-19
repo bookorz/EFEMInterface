@@ -1,28 +1,26 @@
-﻿using DIOControl;
-using EFEMInterface.Comm;
+﻿using EFEMInterface.Comm;
 using log4net;
 using Newtonsoft.Json;
-using SANWA.Utility;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
+using TransferControl.Comm;
+using TransferControl.CommandConvert;
 using TransferControl.Engine;
 using TransferControl.Management;
 
 namespace EFEMInterface.MessageInterface
 {
-    public class RorzeInterface : ICommMessage, IHandlingTimeOutReport, IHostInterfaceReport
+    public class RorzeInterface : ICommMessage, IHandlingTimeOutReport, IUserInterfaceReport
     {
         ILog logger = LogManager.GetLogger(typeof(RorzeInterface));
 
         private ConcurrentDictionary<string, OnHandling> OnHandlingCmds = new ConcurrentDictionary<string, OnHandling>();
 
-        IEFEMControl _EventReport;
+        IUserInterfaceReport _EventReport;
 
         SocketServer Comm;
 
@@ -99,7 +97,7 @@ namespace EFEMInterface.MessageInterface
             public bool BF2_BYPASS { get; set; }
         }
 
-        public RorzeInterface(IEFEMControl EventReport)
+        public RorzeInterface(IUserInterfaceReport EventReport)
         {
 
             _EventReport = EventReport;
@@ -331,7 +329,7 @@ namespace EFEMInterface.MessageInterface
             string CommandMsg = CmdAssembler(WaitForHandle.Cmd, CommandType.ACK);
 
             Comm.Send(WaitForHandle.Handler, CommandMsg);
-            _EventReport.On_CommandMessage("Send:" + CommandMsg);
+            _EventReport.On_Message_Log("EFEM", "Send:" + CommandMsg);
         }
 
         private void SendNak(OnHandling WaitForHandle, string detail)
@@ -339,8 +337,8 @@ namespace EFEMInterface.MessageInterface
             System.Threading.Thread.Sleep(300);
             string ErrorMsg = CmdFormatErrorAssembler(WaitForHandle.Cmd);
             Comm.Send(WaitForHandle.Handler, ErrorMsg);
-            _EventReport.On_CommandMessage("Err :" + detail);
-            _EventReport.On_CommandMessage("Send:" + ErrorMsg);
+            _EventReport.On_Message_Log("EFEM", "Err :" + detail);
+            _EventReport.On_Message_Log("EFEM", "Send:" + ErrorMsg);
         }
 
         private void SendCancel(OnHandling WaitForHandle, string Factor, string Place, string detail)
@@ -348,12 +346,12 @@ namespace EFEMInterface.MessageInterface
             //回報設備不可使用
             if (!WaitForHandle.IsReturn)
             {
-                _EventReport.On_EFEM_Status_changed(EFEM_State);
+                _EventReport.On_Status_Changed("EFEM", EFEM_State);
                 //WaitForHandle.IsReturn = true;
                 string CancelMsg = CancelAssembler(WaitForHandle.Cmd, Factor, Place);
                 Comm.Send(WaitForHandle.Handler, CancelMsg);
-                _EventReport.On_CommandMessage("Err :" + detail);
-                _EventReport.On_CommandMessage("Send:" + CancelMsg);
+                _EventReport.On_Message_Log("EFEM", "Err :" + detail);
+                _EventReport.On_Message_Log("EFEM", "Send:" + CancelMsg);
             }
             OnHandlingCmds.TryRemove(WaitForHandle.ID, out WaitForHandle);
         }
@@ -367,7 +365,7 @@ namespace EFEMInterface.MessageInterface
                 WaitForHandle.NotConfirmMsg = CommandMsg;
                 WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
                 Comm.Send(WaitForHandle.Handler, CommandMsg);
-                _EventReport.On_CommandMessage("Send:" + CommandMsg);
+                _EventReport.On_Message_Log("EFEM", "Send:" + CommandMsg);
 
             }
         }
@@ -383,7 +381,7 @@ namespace EFEMInterface.MessageInterface
                 WaitForHandle.NotConfirmMsg = CommandMsg;
                 WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
                 Comm.Send(WaitForHandle.Handler, CommandMsg);
-                _EventReport.On_CommandMessage("Send:" + CommandMsg);
+                _EventReport.On_Message_Log("EFEM", "Send:" + CommandMsg);
 
             }
         }
@@ -404,7 +402,7 @@ namespace EFEMInterface.MessageInterface
                                                                          //WaitForHandle.NotConfirmMsg = CommandMsg;
                                                                          //WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
                 Comm.Send(WaitForHandle.Handler, CommandMsg);
-                _EventReport.On_CommandMessage("Send:" + CommandMsg);
+                _EventReport.On_Message_Log("EFEM", "Send:" + CommandMsg);
             }
         }
 
@@ -413,21 +411,21 @@ namespace EFEMInterface.MessageInterface
             if (!WaitForHandle.IsReturn)
             {
                 EFEM_State = "UNINIT";
-                _EventReport.On_EFEM_Status_changed("Error");
+                _EventReport.On_Status_Changed("EFEM", "Alarm");
                 WaitForHandle.IsReturn = true;
                 string ErrorMsg = ErrorAssembler(WaitForHandle.Cmd, param1, param2);
                 WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
                 Comm.Send(WaitForHandle.Handler, ErrorMsg);
                 WaitForHandle.NotConfirmMsg = ErrorMsg;
                 // _EventReport.On_CommandMessage("Err :" + detail);
-                _EventReport.On_CommandMessage("Send:" + ErrorMsg);
+                _EventReport.On_Message_Log("EFEM", "Send:" + ErrorMsg);
 
             }
         }
 
         public void On_Connection_Connecting()
         {
-            _EventReport.On_Connection_Connecting();
+            _EventReport.On_Message_Log("EFEM", "Host Connecting");
         }
 
         public void On_Connection_Connected(Socket handler)
@@ -446,18 +444,18 @@ namespace EFEMInterface.MessageInterface
 
             SendInfo(WaitForHandle);
 
-            _EventReport.On_Connection_Connected();
+            _EventReport.On_Message_Log("EFEM", "Host Connected");
             EventHandling = WaitForHandle;
         }
 
         public void On_Connection_Disconnected()
         {
-            _EventReport.On_Connection_Disconnected();
+            _EventReport.On_Message_Log("EFEM", "Host Disconnected");
         }
 
         public void On_Connection_Error(string Msg)
         {
-            _EventReport.On_CommandMessage(Msg.ToString());
+            _EventReport.On_Message_Log("EFEM", Msg);
         }
 
         static object lockObj = new object();
@@ -480,7 +478,7 @@ namespace EFEMInterface.MessageInterface
                     }
                     logger.Debug("EFEM Host Recieve : " + content);
                     int no = 0;
-                    _EventReport.On_CommandMessage("Recv:" + content.ToString());
+                    _EventReport.On_Message_Log("EFEM", "Recv:" + content.ToString());
                     RorzeCommand cmd = CmdParser(content);
 
                     OnHandling WaitForHandle = null;
@@ -501,7 +499,7 @@ namespace EFEMInterface.MessageInterface
                                 //SendInfo(WaitForHandle);
                                 return;
                             }
-                            foreach(Node port in NodeManagement.GetLoadPortList())
+                            foreach (Node port in NodeManagement.GetLoadPortList())
                             {
                                 if (!port.Enable)
                                 {
@@ -510,7 +508,7 @@ namespace EFEMInterface.MessageInterface
                                     if (cmd.OrgMsg.Contains(pName))
                                     {
                                         SendCancel(WaitForHandle, "NOLINK", pName, "Port disabled.");
-                                        
+
                                         return;
                                     }
                                 }
@@ -1831,7 +1829,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "SET_ERROR";
                                         //Dictionary<string, string> param = new Dictionary<string, string>();
 
-                                        
+
                                         RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName);
 
                                         if (!ErrorMessage.Equals(""))
@@ -2534,7 +2532,7 @@ namespace EFEMInterface.MessageInterface
                         case CommandType.MOV:
                             //EFEM_State = "Busy";
                             EFEM_Busy = true;
-                            _EventReport.On_EFEM_Status_changed("Busy");
+                            _EventReport.On_Status_Changed("EFEM", "Busy");
                             switch (cmd.Command.ToUpper())
                             {
                                 case "INIT":
@@ -2804,7 +2802,7 @@ namespace EFEMInterface.MessageInterface
                                             SendAck(WaitForHandle);
                                             Node port = NodeManagement.Get(Target);
                                             port.Foup_Lock = true;
-                                            On_Event_Trigger("SIGSTAT", "PORT", Target, "ALL");
+                                            On_Event("SIGSTAT", "PORT", Target, "ALL");
                                         }
                                     }
                                     catch
@@ -2871,7 +2869,7 @@ namespace EFEMInterface.MessageInterface
                                             SendAck(WaitForHandle);
                                             Node port = NodeManagement.Get(Target);
                                             port.Foup_Lock = false;
-                                            On_Event_Trigger("SIGSTAT", "PORT", Target, "ALL");
+                                            On_Event("SIGSTAT", "PORT", Target, "ALL");
                                         }
                                     }
                                     catch
@@ -4595,7 +4593,7 @@ namespace EFEMInterface.MessageInterface
             }
             catch (Exception e)
             {
-                _EventReport.On_CommandMessage(e.StackTrace);
+                _EventReport.On_Message_Log("EFEM", e.StackTrace);
             }
         }
 
@@ -4676,12 +4674,12 @@ namespace EFEMInterface.MessageInterface
                 TimeOutCmd.INF_RetryCount++;
 
                 Comm.Send(TimeOutCmd.Handler, TimeOutCmd.NotConfirmMsg);
-                _EventReport.On_CommandMessage("Send:" + TimeOutCmd.NotConfirmMsg);
+                _EventReport.On_Message_Log("EFEM", "Send:" + TimeOutCmd.NotConfirmMsg);
             }
             else
             {
                 TimeOutCmd.SetTimeOutMonitor(false);//設定Timeout監控停止
-                _EventReport.On_CommandMessage("Retry Timeout:" + TimeOutCmd.NotConfirmMsg);
+                _EventReport.On_Message_Log("EFEM", "Retry Timeout:" + TimeOutCmd.NotConfirmMsg);
                 OnHandlingCmds.TryRemove(key, out TimeOutCmd);//從待處理名單移除
 
             }
@@ -4695,13 +4693,14 @@ namespace EFEMInterface.MessageInterface
         {
             OnHandling WaitForHandle;
 
-           
+
 
             if (OnHandlingCmds.TryGetValue(Task.Id, out WaitForHandle))
             {
-                
+
                 SendAck(WaitForHandle);
             }
+            _EventReport.On_TaskJob_Ack(Task);
         }
 
         public void On_TaskJob_Finished(TaskJobManagment.CurrentProceedTask Task)
@@ -4717,7 +4716,7 @@ namespace EFEMInterface.MessageInterface
                         switch (WaitForHandle.Cmd.Command)
                         {
                             case "ERROR":
-                                _EventReport.On_EFEM_Status_changed(EFEM_State);
+                                _EventReport.On_Status_Changed("EFEM", EFEM_State);
                                 break;
                         }
                         break;
@@ -4750,7 +4749,7 @@ namespace EFEMInterface.MessageInterface
                                     if (EFEM_State.Equals("UNINIT"))
                                     {
                                         EFEM_State = "UNORG";
-                                        _EventReport.On_EFEM_Status_changed(EFEM_State);
+                                        _EventReport.On_Status_Changed("EFEM", EFEM_State);
                                     }
 
                                 }
@@ -4759,12 +4758,12 @@ namespace EFEMInterface.MessageInterface
                                 if (WaitForHandle.Cmd.Target.Equals("ALL") || WaitForHandle.Cmd.Target.IndexOf("ROBOT") != -1)
                                 {
                                     EFEM_State = "READY";
-                                    _EventReport.On_EFEM_Status_changed(EFEM_State);
+                                    _EventReport.On_Status_Changed("EFEM", EFEM_State);
                                 }
                                 break;
                             default:
-                                
-                                _EventReport.On_EFEM_Status_changed(EFEM_State);
+
+                                _EventReport.On_Status_Changed("EFEM", EFEM_State);
                                 break;
                         }
                         SendInfo(WaitForHandle);
@@ -4815,8 +4814,8 @@ namespace EFEMInterface.MessageInterface
                                 break;
                             case "STATE":
                                 Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
-                                string p = (Target.R_Presence? "1":"0") + (Target.L_Presence? "1":"0");
-                                
+                                string p = (Target.R_Presence ? "1" : "0") + (Target.L_Presence ? "1" : "0");
+
                                 SendInfo(WaitForHandle, p, "");
                                 break;
                         }
@@ -4829,7 +4828,7 @@ namespace EFEMInterface.MessageInterface
                                 if (!CmdAry[2].Equals("SYSTEM"))
                                 {
                                     SendInfo(WaitForHandle);
-                                    On_Event_Trigger("SIGSTAT", "PORT", NodeNameConvert(CmdAry[2], "LOADPORT"), "ALL");
+                                    On_Event("SIGSTAT", "PORT", NodeNameConvert(CmdAry[2], "LOADPORT"), "ALL");
                                     return;
                                 }
                                 break;
@@ -4854,6 +4853,7 @@ namespace EFEMInterface.MessageInterface
             {
                 logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + Task.Id);
             }
+            _EventReport.On_TaskJob_Finished(Task);
         }
 
         public void On_TaskJob_Aborted(TaskJobManagment.CurrentProceedTask Task, string Location, string ReportType, string Message)
@@ -4909,9 +4909,10 @@ namespace EFEMInterface.MessageInterface
             {
                 logger.Error("On_TaskJob_Aborted 找不到 TaskID:" + Task.Id + " Message:" + Message);
             }
+            _EventReport.On_TaskJob_Aborted(Task, Location, ReportType, Message);
         }
 
-        public void On_Event_Trigger(string Type, string Source, string Name, string Value)
+        public void On_Event(string Type, string Source, string Name, string Value)
         {
             try
             {
@@ -5308,6 +5309,163 @@ namespace EFEMInterface.MessageInterface
         public void On_Foup_Presence(string PortName, bool Presence)
         {
 
+        }
+        private void IO_State_Change(string Source, string Attr, object Value)
+        {
+            try
+            {
+                Node src = NodeManagement.Get(Source);
+                if (src != null)
+                {
+
+                    src.GetType().GetProperty(Attr).SetValue(src, Value);
+
+                    this.On_Event("SIGSTAT", "PORT", Source, "ALL");
+
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error(e.StackTrace);
+            }
+        }
+        public void On_Command_Excuted(Node Node, Transaction Txn, CommandReturnMessage Msg)
+        {
+            switch (Node.Type)
+            {
+                case "LOADPORT":
+                    switch (Txn.Method)
+                    {
+                        case Transaction.Command.LoadPortType.ReadStatus:
+                            this.On_Event("SIGSTAT", "PORT", Node.Name, "ALL");
+                            break;
+                        case Transaction.Command.LoadPortType.GetMapping:
+                            this.On_Event("MAPDT", "", Node.Name, Msg.Value);
+                            break;
+                    }
+                    break;
+            }
+            _EventReport.On_Command_Excuted(Node, Txn, Msg);
+        }
+
+        public void On_Command_Error(Node Node, Transaction Txn, CommandReturnMessage Msg)
+        {
+            _EventReport.On_Command_Error(Node, Txn, Msg);
+        }
+
+        public void On_Command_Finished(Node Node, Transaction Txn, CommandReturnMessage Msg)
+        {
+            switch (Txn.Method)
+            {
+                case Transaction.Command.LoadPortType.MappingLoad:
+                    this.IO_State_Change(Node.Name, "Foup_Lock", true);
+                    break;
+                case Transaction.Command.LoadPortType.Unload:
+                case Transaction.Command.LoadPortType.MappingUnload:
+                case Transaction.Command.LoadPortType.UnDock:
+                    this.IO_State_Change(Node.Name, "Foup_Lock", false);
+                    break;
+                case Transaction.Command.LoadPortType.InitialPos:
+                case Transaction.Command.LoadPortType.ForceInitialPos:
+                    this.IO_State_Change(Node.Name, "Foup_Lock", false);
+                    break;
+            }
+            _EventReport.On_Command_Finished(Node, Txn, Msg);
+        }
+
+        public void On_Command_TimeOut(Node Node, Transaction Txn)
+        {
+            _EventReport.On_Command_TimeOut(Node, Txn);
+        }
+
+        public void On_Event_Trigger(Node Node, CommandReturnMessage Msg)
+        {
+            switch (Node.Type.ToUpper())
+            {
+                case "LOADPORT":
+                    switch (Msg.Command)
+                    {
+                        case "MANSW":
+                            this.IO_State_Change(Node.Name, "Access_SW", true);
+                            break;
+                        case "MANOF":
+                            this.IO_State_Change(Node.Name, "Access_SW", false);
+                            break;
+                        case "SMTON":
+                            this.IO_State_Change(Node.Name, "Foup_Presence", false);
+                            break;
+                        case "PODOF":
+                            this.IO_State_Change(Node.Name, "Foup_Presence", true);
+                            this.IO_State_Change(Node.Name, "Foup_Placement", false);
+
+                            break;
+                        case "PODON":
+                            this.IO_State_Change(Node.Name, "Foup_Presence", false);
+                            this.IO_State_Change(Node.Name, "Foup_Placement", true);
+
+                            break;
+                        case "ABNST":
+                            this.IO_State_Change(Node.Name, "Foup_Placement", false);
+                            break;
+                        case "POD_ARRIVED":
+                            this.IO_State_Change(Node.Name, "Foup_Presence", false);
+                            this.IO_State_Change(Node.Name, "Foup_Placement", true);
+                            break;
+
+                        case "POD_REMOVED":
+                            this.IO_State_Change(Node.Name, "Foup_Presence", true);
+                            this.IO_State_Change(Node.Name, "Foup_Placement", false);
+                            break;
+                    }
+                    break;
+            }
+            _EventReport.On_Event_Trigger(Node, Msg);
+        }
+
+        public void On_Node_State_Changed(Node Node, string Status)
+        {
+            _EventReport.On_Node_State_Changed(Node, Status);
+        }
+
+        public void On_Node_Connection_Changed(string NodeName, string Status)
+        {
+            _EventReport.On_Node_Connection_Changed(NodeName, Status);
+        }
+
+        public void On_Job_Location_Changed(Job Job)
+        {
+            _EventReport.On_Job_Location_Changed(Job);
+        }
+
+        public void On_Data_Chnaged(string Parameter, string Value, string Type)
+        {
+            this.On_Event("SIGSTAT", "SYSTEM", Parameter, RouteControl.Instance.DIO.GetALL());
+            _EventReport.On_Data_Chnaged(Parameter, Value, Type);
+        }
+
+        public void On_Connection_Error(string DIOName, string ErrorMsg)
+        {
+            _EventReport.On_Connection_Error(DIOName, ErrorMsg);
+        }
+
+        public void On_Connection_Status_Report(string DIOName, string Status)
+        {
+            _EventReport.On_Connection_Status_Report(DIOName, Status);
+        }
+
+        public void On_Alarm_Happen(string DIOName, string ErrorCode)
+        {
+            _EventReport.On_Alarm_Happen(DIOName, ErrorCode);
+        }
+
+        public void On_Message_Log(string Type, string Message)
+        {
+            _EventReport.On_Message_Log(Type, Message);
+        }
+
+        public void On_Status_Changed(string Type, string Message)
+        {
+            _EventReport.On_Status_Changed(Type, Message);
         }
 
         //***************Event report from Transfer control*****************End
