@@ -679,10 +679,14 @@ namespace EFEMInterface.MessageInterface
                                             }
                                         }
                                         //通過檢查
-                                        Node t = NodeManagement.Get(Target);
+                                        ErrorMessage = "";
+                                        TaskName = "ROBOT_GET_SPEED";
+                                        Dictionary<string, string> param = new Dictionary<string, string>();
+                                        param.Add("@Target", Target);
 
+                                        RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
-                                        if (t == null)
+                                        if (!ErrorMessage.Equals(""))
                                         {
                                             SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
                                             // SendInfo(WaitForHandle);
@@ -690,9 +694,21 @@ namespace EFEMInterface.MessageInterface
                                         else
                                         {
                                             SendAck(WaitForHandle);
-                                            SendInfo(WaitForHandle, t.Speed, "");
-                                            LastError = null;
                                         }
+                                        //Node t = NodeManagement.Get(Target);
+
+
+                                        //if (t == null)
+                                        //{
+                                        //    SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
+                                        //    // SendInfo(WaitForHandle);
+                                        //}
+                                        //else
+                                        //{
+                                        //    SendAck(WaitForHandle);
+                                        //    SendInfo(WaitForHandle, t.Speed, "");
+                                        //    LastError = null;
+                                        //}
                                     }
                                     catch
                                     {
@@ -4772,6 +4788,10 @@ namespace EFEMInterface.MessageInterface
                     case "GET":
                         switch (WaitForHandle.Cmd.Command)
                         {
+                            case "SPEED":
+                                Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
+                                SendInfo(WaitForHandle, Target.Speed, "");
+                                break;
                             case "MAPDT":
                                 Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
                                 string Mapping = Target.MappingResult;
