@@ -683,7 +683,7 @@ namespace EFEMInterface.MessageInterface
                                         TaskName = "ROBOT_GET_SPEED";
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
-
+                                        cmd.Target = Target;
                                         RouteControl.Instance.TaskJob.Excute(WaitForHandle.ID, out ErrorMessage, out CurrTask, TaskName, param);
 
                                         if (!ErrorMessage.Equals(""))
