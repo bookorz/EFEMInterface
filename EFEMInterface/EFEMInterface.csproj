@@ -30,11 +30,11 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="log4net">
-      <HintPath>..\..\TransferControl\TransferControl\Lib\log4net.dll</HintPath>
+    <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <HintPath>..\..\Lilith\packages\log4net.2.0.8\lib\net45-full\log4net.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\..\Lilith\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\..\Lilith\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -48,7 +48,6 @@
   <ItemGroup>
     <Compile Include="Comm\ICommControl.cs" />
     <Compile Include="Comm\SocketServer.cs" />
-    <Compile Include="IEFEMControl.cs" />
     <Compile Include="MessageInterface\ErrorCategory.cs" />
     <Compile Include="MessageInterface\ICommMessage.cs" />
     <Compile Include="MessageInterface\IHandlingTimeOutReport.cs" />
@@ -57,14 +56,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\DIOControl\DIOControl\DIOControl.csproj">
-      <Project>{21adfcfc-11c7-4982-af57-09002ed8e961}</Project>
-      <Name>DIOControl</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\SANWAFunction\SANWA\SANWA\SANWA.csproj">
-      <Project>{4eed2ed4-a72e-4f24-8d80-ef2f0b24fcf1}</Project>
-      <Name>SANWA</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\TransferControl\TransferControl\TransferControl.csproj">
       <Project>{316ccd27-c53f-42f2-ad5e-5ca897dd9ab8}</Project>
       <Name>TransferControl</Name>
