@@ -62,8 +62,7 @@ namespace EFEMInterface.MessageInterface
                     this.PORT = evt.PORT;
                     this.PRS = evt.PRS;
                     this.FFU = evt.FFU;
-                    this.BF1_BYPASS = evt.BF1_BYPASS;
-                    this.BF2_BYPASS = evt.BF2_BYPASS;
+                 
                 }
                 else
                 {
@@ -73,8 +72,7 @@ namespace EFEMInterface.MessageInterface
                     this.PORT = true;
                     this.PRS = true;
                     this.FFU = true;
-                    this.BF1_BYPASS = false;
-                    this.BF2_BYPASS = false;
+                
                 }
             }
 
@@ -91,8 +89,7 @@ namespace EFEMInterface.MessageInterface
             public bool PORT { get; set; }
             public bool PRS { get; set; }
             public bool FFU { get; set; }
-            public bool BF1_BYPASS { get; set; }
-            public bool BF2_BYPASS { get; set; }
+         
         }
 
         public RorzeInterface(IUserInterfaceReport Report)
@@ -4636,6 +4633,7 @@ namespace EFEMInterface.MessageInterface
                                 }
                                 break;
                             case "ERROR":
+                                LastError = null;
                                 SendAck(WaitForHandle);
                                 WaitForHandle.SetTimeOutMonitor(false);//設定Timeout監控停止
 
