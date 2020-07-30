@@ -25,6 +25,7 @@ namespace EFEMInterface.MessageInterface
         IUserInterfaceReport _EventReport;
 
         SocketServer Comm;
+        public static RorzeInterface Instance = null;
 
         public ReportEvent Events = new ReportEvent();
 
@@ -94,7 +95,7 @@ namespace EFEMInterface.MessageInterface
 
         public RorzeInterface(IUserInterfaceReport Report)
         {
-
+            Instance = this;
             _EventReport = Report;
             Comm = new SocketServer(this);
 
@@ -1369,16 +1370,7 @@ namespace EFEMInterface.MessageInterface
                                         WaitForHandle.Cmd.Target = Target;
 
                                         TaskFlowManagement.Excute(TaskFlowManagement.Command.GET_CSTID, param, WaitForHandle.ID);
-                                        if (!ErrorMessage.Equals(""))
-                                        {
-                                            SendCancel(WaitForHandle, ErrorCategory.CancelFactor.NOLINK, "", ErrorMessage);
-                                            // SendInfo(WaitForHandle);
-                                        }
-                                        else
-                                        {
-                                            SendAck(WaitForHandle);
-                                            LastError = null;
-                                        }
+                                        
                                     }
                                     catch
                                     {
@@ -3377,7 +3369,7 @@ namespace EFEMInterface.MessageInterface
                                         param.Add("@Arm", Arm);
                                         param.Add("@Position", Position);
                                         param.Add("@Method", TargetCheckMethod);
-
+                                        param.Add("@BYPASS_CHECK",NodeManagement.Get(Position).ByPassCheck?"TRUE":"FALSE");
 
 
                                         TaskFlowManagement.Excute(TaskFlowManagement.Command.ROBOT_GET, param, WaitForHandle.ID);
@@ -4585,7 +4577,7 @@ namespace EFEMInterface.MessageInterface
                                 switch (WaitForHandle.Cmd.Arm)
                                 {
                                     case "1":
-                                        if (Target.RArmClamp && Target.RArmUnClamp)
+                                        if (Target.R_Vacuum_Solenoid.Equals("1"))
                                         {
                                             Data1 = "ON";
                                         }
@@ -4595,7 +4587,7 @@ namespace EFEMInterface.MessageInterface
                                         }
                                         break;
                                     case "2":
-                                        if (Target.LArmClamp && Target.LArmUnClamp)
+                                        if (Target.L_Vacuum_Solenoid.Equals("1"))
                                         {
                                             Data1 = "ON";
                                         }
