@@ -4913,7 +4913,7 @@ namespace EFEMInterface.MessageInterface
                                 if (port.Foup_Presence)
                                 {
                                     Data1 = Data1.Remove(1, 1);
-                                    Data1 = Data1.Insert(1, "1");
+                                    Data1 = Data1.Insert(1, "0");
 
                                     Data2 = Data2.Remove(0, 1);
                                     Data2 = Data2.Insert(0, "1");
@@ -4921,7 +4921,7 @@ namespace EFEMInterface.MessageInterface
                                 else
                                 {
                                     Data1 = Data1.Remove(1, 1);
-                                    Data1 = Data1.Insert(1, "0");
+                                    Data1 = Data1.Insert(1, "1");
 
                                     Data2 = Data2.Remove(0, 1);
                                     Data2 = Data2.Insert(0, "0");
