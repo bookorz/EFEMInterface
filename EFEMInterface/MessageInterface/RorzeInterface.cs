@@ -366,6 +366,7 @@ namespace EFEMInterface.MessageInterface
                 string CommandMsg = CmdAssembler(WaitForHandle.Cmd, CommandType.INF);//傳送動作完成給上位系統
                 WaitForHandle.NotConfirmMsg = CommandMsg;
                 WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+                WaitForHandle.IsINF = true;
                 Comm.Send(WaitForHandle.Handler, CommandMsg);
                 _EventReport.On_CommandMessage("Send:" + CommandMsg);
 
@@ -382,6 +383,7 @@ namespace EFEMInterface.MessageInterface
                 string CommandMsg = InfoAssembler(WaitForHandle.Cmd, d1, d2);//回傳資料給上位系統
                 WaitForHandle.NotConfirmMsg = CommandMsg;
                 WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+                WaitForHandle.IsINF = true;
                 Comm.Send(WaitForHandle.Handler, CommandMsg);
                 _EventReport.On_CommandMessage("Send:" + CommandMsg);
 
@@ -525,9 +527,15 @@ namespace EFEMInterface.MessageInterface
                             tmp.Sort((x, y) => { return -x.ReceiveTime.CompareTo(y.ReceiveTime); });
 
                             var findHandling = from Handling in tmp
-                                               where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) != -1
+                                               where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) != -1 && Handling.IsINF
                                                select Handling;
 
+                            if ((cmd.Command.ToUpper().Equals("ERROR") && cmd.CommandType.Equals(CommandType.SET))||(cmd.Command.ToUpper().Equals("READY")))
+                            {
+                                findHandling = from Handling in tmp
+                                               where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) != -1 
+                                               select Handling;
+                            }
 
 
                             if (findHandling.Count() != 0)
@@ -535,6 +543,11 @@ namespace EFEMInterface.MessageInterface
                                 WaitForHandle = findHandling.First();
                                 WaitForHandle.SetTimeOutMonitor(false);//設定Timeout監控停止
                                 OnHandlingCmds.TryRemove(WaitForHandle.ID, out WaitForHandle);//從待處理名單移除
+                                logger.Debug("Delete WaitForHandle ID:" + WaitForHandle.ID);
+                            }
+                            else
+                            {
+                                logger.Debug("Delete WaitForHandle ID fail");
                             }
 
                             //foreach(OnHandling Handling in tmp)
