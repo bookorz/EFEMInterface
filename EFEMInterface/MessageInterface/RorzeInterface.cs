@@ -1021,7 +1021,7 @@ namespace EFEMInterface.MessageInterface
                                                     }
                                                     else
                                                     {
-                                                        //命令錯誤
+                                                        //命令錯誤track
                                                         SendNak(WaitForHandle, "Command format error.");
                                                         SendInfo(WaitForHandle);
                                                         return;
@@ -4606,7 +4606,7 @@ namespace EFEMInterface.MessageInterface
                                 break;
                             case "STATE":
                                 Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
-                                string p = (Target.R_Presence ? "1" : "0") + (Target.L_Presence ? "1" : "0");
+                                string p = Target.R_Vacuum_Solenoid +"0";
 
                                 SendInfo(WaitForHandle, p, "");
                                 break;
