@@ -5074,7 +5074,13 @@ namespace EFEMInterface.MessageInterface
                     On_Event_Trigger("SIGSTAT", "PORT", Node.Name, "ALL");
                     break;
                 case Transaction.Command.LoadPortType.GetMapping:
-                    On_Event_Trigger("MAPDT", "PORT", Node.Name, Msg.Value);
+                    string Mapping = Msg.Value;
+                    if (Node.Vendor.Equals("SANWA_MC"))
+                    {
+                        Mapping = Mapping.Split(new string[] { "," }, StringSplitOptions.None)[1] == "2" ? "?????????????????????????" : Mapping.Split(new string[] { "," }, StringSplitOptions.None)[1];
+                    }
+
+                    On_Event_Trigger("MAPDT", "PORT", Node.Name, Mapping);
                     break;
             }
             _EventReport.On_Command_Finished(Node, Txn, Msg);
