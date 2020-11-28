@@ -360,6 +360,7 @@ namespace EFEMInterface.MessageInterface
                 string CommandMsg = CmdAssembler(WaitForHandle.Cmd, CommandType.INF);//傳送動作完成給上位系統
                 WaitForHandle.NotConfirmMsg = CommandMsg;
                 WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+                WaitForHandle.IsINF = true;
                 Comm.Send(WaitForHandle.Handler, CommandMsg);
                 _EventReport.On_Message_Log("EFEM", "Send:" + CommandMsg);
 
@@ -376,6 +377,7 @@ namespace EFEMInterface.MessageInterface
                 string CommandMsg = InfoAssembler(WaitForHandle.Cmd, d1, d2);//回傳資料給上位系統
                 WaitForHandle.NotConfirmMsg = CommandMsg;
                 WaitForHandle.SetTimeOutMonitor(true);//設定Timeout監控開始，5秒後
+                WaitForHandle.IsINF = true;
                 Comm.Send(WaitForHandle.Handler, CommandMsg);
                 _EventReport.On_Message_Log("EFEM", "Send:" + CommandMsg);
 
@@ -472,7 +474,15 @@ namespace EFEMInterface.MessageInterface
                     {
                         continue;
                     }
-                    logger.Debug("EFEM Host Recieve : " + content);
+
+                    //針對客戶端需求過去開頭的不可見字元
+                    string tempContent = "";
+                    int at = content.IndexOf(":");
+
+                    tempContent = content.Replace(content.Substring(0, at), content.Substring(0, at).Trim());
+
+                    logger.Debug("EFEM Host Recieve : " + tempContent);
+
                     int no = 0;
                     _EventReport.On_Message_Log("EFEM", "Recv:" + content.ToString());
                     RorzeCommand cmd = CmdParser(content);
@@ -519,9 +529,15 @@ namespace EFEMInterface.MessageInterface
                             tmp.Sort((x, y) => { return -x.ReceiveTime.CompareTo(y.ReceiveTime); });
 
                             var findHandling = from Handling in tmp
-                                               where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) != -1
+                                               where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) != -1 && Handling.IsINF
                                                select Handling;
 
+                            if ((cmd.Command.ToUpper().Equals("ERROR") && cmd.CommandType.Equals(CommandType.SET)) || (cmd.Command.ToUpper().Equals("READY")))
+                            {
+                                findHandling = from Handling in tmp
+                                               where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) != -1
+                                               select Handling;
+                            }
 
 
                             if (findHandling.Count() != 0)
@@ -529,7 +545,25 @@ namespace EFEMInterface.MessageInterface
                                 WaitForHandle = findHandling.First();
                                 WaitForHandle.SetTimeOutMonitor(false);//設定Timeout監控停止
                                 OnHandlingCmds.TryRemove(WaitForHandle.ID, out WaitForHandle);//從待處理名單移除
+                                logger.Debug("Delete WaitForHandle ID:" + WaitForHandle.ID);
                             }
+                            else
+                            {
+                                logger.Debug("Delete WaitForHandle ID fail");
+                            }
+
+                            //var findHandling = from Handling in tmp
+                            //                   where Handling.Cmd.Command.Equals(cmd.Command) && cmd.CommandParam.IndexOf(Handling.Cmd.CommandParam) != -1
+                            //                   select Handling;
+
+
+
+                            //if (findHandling.Count() != 0)
+                            //{
+                            //    WaitForHandle = findHandling.First();
+                            //    WaitForHandle.SetTimeOutMonitor(false);//設定Timeout監控停止
+                            //    OnHandlingCmds.TryRemove(WaitForHandle.ID, out WaitForHandle);//從待處理名單移除
+                            //}
 
                             //foreach(OnHandling Handling in tmp)
                             //{
@@ -2186,7 +2220,8 @@ namespace EFEMInterface.MessageInterface
                                                     switch (state)
                                                     {
                                                         case "TRUE":
-                                                            MainControl.Instance.DIO.SetIO("BUZZER2", "True");
+                                                            //MainControl.Instance.DIO.SetIO("BUZZER2", "True");
+                                                            MainControl.Instance.DIO.SetBlink("BUZZER2", "True");
                                                             break;
                                                         case "FALSE":
                                                             MainControl.Instance.DIO.SetIO("BUZZER2", "False");

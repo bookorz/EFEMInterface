@@ -18,6 +18,10 @@ namespace EFEMInterface.MessageInterface
         public DateTime ReceiveTime { get; set; }
         public string Msg { get; set; }
         public bool IsReturn { get; set; }
+        /// <summary>
+        /// 是否收到INF
+        /// </summary>
+        public bool IsINF { get; set; }
         //逾時
         private System.Timers.Timer timeOutTimer = new System.Timers.Timer();
         IHandlingTimeOutReport _TimeOutReport;
@@ -31,6 +35,7 @@ namespace EFEMInterface.MessageInterface
             ID = Guid.NewGuid().ToString();
             ReceiveTime = DateTime.Now;
             IsReturn = false;
+            IsINF = false;
         }
 
         public void SetTimeOutMonitor(bool Enabled)
