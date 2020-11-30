@@ -2210,17 +2210,17 @@ namespace EFEMInterface.MessageInterface
                                                     {
                                                         case "TRUE":
 
-                                                            if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("SHORTBLINK") ||
+                                                            if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("BLINK") ||
                                                                 MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("BLINKSTOP"))
                                                             {
                                                                 //MainControl.Instance.DIO.SetBlink("BUZZER2", "False");
-                                                                if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("SHORTBLINK"))
+                                                                if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("BLINK"))
                                                                 {
                                                                     MainControl.Instance.DIO.SetBlinkStop("BUZZER2", "True");
                                                                 }
                                                             }
 
-                                                            MainControl.Instance.DIO.SetBlink("BUZZER1", "True");
+                                                            MainControl.Instance.DIO.SetShortBlink("BUZZER1", "True");
 
                                                             break;
                                                         case "FALSE":
@@ -2229,7 +2229,7 @@ namespace EFEMInterface.MessageInterface
 
                                                             if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("BLINKSTOP"))
                                                             {
-                                                                MainControl.Instance.DIO.SetShortBlink("BUZZER2", "True");
+                                                                MainControl.Instance.DIO.SetBlink("BUZZER2", "True");
 
                                                             }
 
@@ -2240,7 +2240,7 @@ namespace EFEMInterface.MessageInterface
                                                     switch (state)
                                                     {
                                                         case "TRUE":
-                                                            if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("BLINK"))
+                                                            if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("SHORTBLINK"))
                                                             {
                                                                 
                                                                 //MainControl.Instance.DIO.SetBlinkStop("BUZZER2", "True");
@@ -2252,19 +2252,19 @@ namespace EFEMInterface.MessageInterface
                                                             }
                                                             else
                                                             {
-                                                                if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER1").ToUpper().Equals("BLINK"))
+                                                                if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER1").ToUpper().Equals("SHORTBLINK"))
                                                                 {
                                                                     MainControl.Instance.DIO.SetBlinkStop("BUZZER2", "True");
                                                                 }
                                                                 else
                                                                 {
-                                                                    MainControl.Instance.DIO.SetShortBlink("BUZZER2", "True");
+                                                                    MainControl.Instance.DIO.SetBlink("BUZZER2", "True");
                                                                 }
                                                             }
                                                                 
                                                             break;
                                                         case "FALSE":
-                                                            if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("SHORTBLINK"))
+                                                            if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("BLINK"))
                                                             {
                                                                 MainControl.Instance.DIO.SetIO("BUZZER2", "False");
                                                             }
@@ -2272,7 +2272,7 @@ namespace EFEMInterface.MessageInterface
                                                             if (MainControl.Instance.DIO.GetIOStatus("DOUT", "BUZZER2").ToUpper().Equals("BLINKSTOP"))
                                                             {
                                                                 MainControl.Instance.DIO.SetIO("BUZZER2", "False");
-                                                                MainControl.Instance.DIO.SetBlink("BUZZER1", "True");
+                                                                MainControl.Instance.DIO.SetShortBlink("BUZZER1", "True");
                                                             }
                                                             else
                                                             {
