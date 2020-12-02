@@ -2800,6 +2800,7 @@ namespace EFEMInterface.MessageInterface
                                        
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
+                                        WaitForHandle.Cmd.Target = Target;
 
                                         TaskFlowManagement.Excute(TaskFlowManagement.Command.LOADPORT_CLAMP, param, WaitForHandle.ID);
 
@@ -2857,6 +2858,7 @@ namespace EFEMInterface.MessageInterface
 
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
+                                        WaitForHandle.Cmd.Target = Target;
                                         TaskFlowManagement.Excute(TaskFlowManagement.Command.LOADPORT_UNCLAMP, param, WaitForHandle.ID);
 
                                        
@@ -2912,6 +2914,7 @@ namespace EFEMInterface.MessageInterface
                                      
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
+                                        WaitForHandle.Cmd.Target = Target;
                                         TaskFlowManagement.Excute(TaskFlowManagement.Command.LOADPORT_DOCK, param, WaitForHandle.ID);
 
                                        
@@ -2967,6 +2970,7 @@ namespace EFEMInterface.MessageInterface
                                        
                                         Dictionary<string, string> param = new Dictionary<string, string>();
                                         param.Add("@Target", Target);
+                                        WaitForHandle.Cmd.Target = Target;
                                         TaskFlowManagement.Excute(TaskFlowManagement.Command.LOADPORT_UNDOCK, param, WaitForHandle.ID);
                                         
 
@@ -4565,13 +4569,29 @@ namespace EFEMInterface.MessageInterface
         public void On_TaskJob_Ack(TaskFlowManagement.CurrentProcessTask Task)
         {
             OnHandling WaitForHandle;
-
+            Node Target = null;
 
 
             if (OnHandlingCmds.TryGetValue(Task.Id, out WaitForHandle))
             {
 
                 SendAck(WaitForHandle);
+
+                switch (WaitForHandle.Cmd.CommandType)
+                {
+                    case "MOV":
+
+                        //switch (WaitForHandle.Cmd.Command)
+                        //{
+                        //    //case "DOCK":
+                        //    //    Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
+                        //    //    On_Event_Trigger("SIGSTAT", "PORT", Target.Name, "ALL");
+                        //    //    break;
+                        //}
+                        //break;
+                    default:
+                        break;
+                }
             }
             _EventReport.On_TaskJob_Ack(Task);
         }
@@ -4635,6 +4655,27 @@ namespace EFEMInterface.MessageInterface
                                     //_EventReport.On_EFEM_Status_changed(EFEM_State);
                                 }
                                 break;
+
+                            //搭配華海清科修改SMIF控制流程
+                            case "LOCK":
+                            case "UNLOCK":
+                                lastEvt = "";
+                                Target = NodeManagement.Get(WaitForHandle.Cmd.Target);
+
+                                Node port = NodeManagement.Get(Target.Name);
+
+                                if (WaitForHandle.Cmd.Command.Equals("LOCK"))
+                                {
+                                    port.Foup_Lock = true;
+                                }
+                                else
+                                {
+                                    port.Foup_Lock = false;
+                                }
+
+                                On_Event_Trigger("SIGSTAT", "PORT", Target.Name, "ALL");
+                                break;
+
                             default:
 
                                // _EventReport.On_EFEM_Status_changed(EFEM_State);
