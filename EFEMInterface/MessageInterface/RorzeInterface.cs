@@ -5287,7 +5287,7 @@ namespace EFEMInterface.MessageInterface
 
         public void On_DIO_Data_Chnaged(string Parameter, string Value, string Type)
         {
-            On_Event_Trigger("SIGSTAT", "SYSTEM", Parameter, MainControl.Instance.DIO.GetALL());
+            //On_Event_Trigger("SIGSTAT", "SYSTEM", Parameter, MainControl.Instance.DIO.GetALL());
             _EventReport.On_DIO_Data_Chnaged(Parameter,  Value,  Type);
         }
 
